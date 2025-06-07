@@ -1,23 +1,44 @@
-import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Text, Button } from 'react-native-elements';
 import { useAuth } from '../context/AuthContext';
 import { MaterialIcons } from '@expo/vector-icons';
 
+// Import AdminUserManagement screen (assumed added to navigator)
+// Ensure that your AppNavigator has a screen named 'AdminUserManagement' pointing to the component file
+
 const HomeScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0984e3" />
+        <Text style={styles.loadingText}>Loading portal...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
         <Text style={styles.welcomeText}>Welcome back,</Text>
         <Text style={styles.usernameText}>{user?.username}</Text>
-        <Text style={styles.roleBadge}>{user?.role.toUpperCase()}</Text>
+        <Text style={styles.roleBadge}>{user?.role?.toUpperCase()}</Text>
       </View>
 
       <View style={styles.card}>
         <Text style={styles.infoText}>Shop Management Portal</Text>
-        
+
         <View style={styles.buttonGroup}>
           {user?.role === 'admin' ? (
             <>
@@ -41,6 +62,14 @@ const HomeScreen = ({ navigation }) => {
                 titleStyle={styles.buttonTitle}
                 icon={<MaterialIcons name="insert-chart" size={22} color="white" style={styles.icon} />}
                 onPress={() => navigation.navigate('Reports')}
+              />
+              {/* Admin-only: User Management */}
+              <Button
+                title="User Management"
+                buttonStyle={styles.adminButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="manage-accounts" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('AdminUserManagement')}
               />
             </>
           ) : (
@@ -88,6 +117,17 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: '#f8f9fa',
     padding: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 18,
+    color: '#636e72',
   },
   header: {
     marginBottom: 32,
@@ -145,6 +185,24 @@ const styles = StyleSheet.create({
     height: 56,
     paddingVertical: 8,
   },
+  analyticsButton: {
+    backgroundColor: '#9b59b6',
+    borderRadius: 10,
+    marginTop: 10,
+    padding: 15,
+  },
+  adminButton: {
+    backgroundColor: '#e17055',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  tertiaryButton: {
+    backgroundColor: '#6c5ce7',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
   buttonTitle: {
     fontWeight: '600',
     fontSize: 17,
@@ -166,12 +224,6 @@ const styles = StyleSheet.create({
   },
   logoutIcon: {
     marginRight: 8,
-  },
-  analyticsButton: {
-    backgroundColor: '#9b59b6',
-    borderRadius: 10,
-    marginTop: 10,
-    padding: 15,
   },
 });
 

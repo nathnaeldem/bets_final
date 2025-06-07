@@ -13,7 +13,23 @@ import {
 } from 'react-native';
 import { Text, Button, Card, Input, Icon } from 'react-native-elements';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api/authApi';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axiosRetry from 'axios-retry'; // Import axios-retry
+
+// Configure axios-retry
+axiosRetry(axios, {
+  retries: 3, // Number of retry attempts
+  retryDelay: (retryCount) => {
+    return retryCount * 1000; // Exponential back-off: 1s, 2s, 3s
+  },
+  retryCondition: (error) => {
+    // Retry only on network errors (e.g., no response, timeout)
+    return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
+  },
+});
+
+const API_URL = 'https://googsites.pro.et/auth.php';
 
 const SalesScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -24,19 +40,42 @@ const SalesScreen = ({ navigation }) => {
   const [soldPrice, setSoldPrice] = useState('');
   const [comment, setComment] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentMethod, setPaymentMethod] = useState('credit');
+  const [networkError, setNetworkError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await authApi.getProducts();
-      const availableProducts = response.products.filter(
+      setNetworkError(false); // Reset network error on new fetch attempt
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await axios.post(
+        API_URL,
+        {},
+        {
+          params: { action: 'getProducts' },
+          headers: headers,
+        }
+      );
+
+      const availableProducts = response.data.products.filter(
         (product) => product.status === 'in_store' && product.quantity > 0
       );
       setProducts(availableProducts);
     } catch (err) {
-      console.error(err);
-      Alert.alert('Error', 'Failed to fetch products');
+      console.error("Fetch products error:", err); // More specific error logging
+      setNetworkError(true);
+      // Only show Alert if it's not a retryable error being handled by axios-retry
+      if (!axiosRetry.isNetworkError(err) && !axiosRetry.isRetryableError(err)) {
+          Alert.alert('Error', err.response?.data?.message || 'Failed to fetch products');
+      }
     } finally {
       setLoading(false);
     }
@@ -51,7 +90,7 @@ const SalesScreen = ({ navigation }) => {
     setQuantitySold('');
     setSoldPrice(product.selling_price.toString());
     setComment('');
-    setPaymentMethod('cash');
+    setPaymentMethod('credit');
   };
 
   const calculateTotalPrice = () => {
@@ -91,26 +130,54 @@ const SalesScreen = ({ navigation }) => {
 
     try {
       setProcessing(true);
+      const token = await AsyncStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-      await authApi.sellProduct({
+      const saleData = {
         product_id: selectedProduct.id,
         quantity_sold: qty,
         sold_price: price,
         payment_method: paymentMethod,
         comment: comment,
-      });
+      };
 
-      Alert.alert('Success', 'Product sold successfully!', [
+      const response = await axios.post(
+        API_URL,
+        saleData,
         {
-          text: 'OK',
-          onPress: () => {
-            setSelectedProduct(null);
-            fetchProducts();
+          params: { action: 'sellProduct' },
+          headers: headers,
+        }
+      );
+
+      if (response.data && response.data.success === false) {
+        Alert.alert('Error', response.data.message || 'Sale processing failed.');
+      } else {
+        Alert.alert('Success', 'Product sold successfully!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              setSelectedProduct(null);
+              fetchProducts();
+            },
           },
-        },
-      ]);
+        ]);
+      }
     } catch (error) {
-      Alert.alert('Error', error.message);
+      console.error("Sale processing error:", error); // More specific error logging
+      // Only show Alert if it's not a retryable error being handled by axios-retry
+      if (!axiosRetry.isNetworkError(error) && !axiosRetry.isRetryableError(error)) {
+          Alert.alert('Error', error.response?.data?.message || error.message || 'An unexpected error occurred.');
+      } else {
+          // You might want to show a more specific message if all retries failed due to network
+          Alert.alert('Network Issue', 'Could not complete sale due to a network problem after multiple retries. Please check your connection and try again.');
+          setNetworkError(true); // Indicate network error in UI
+      }
     } finally {
       setProcessing(false);
     }
@@ -140,7 +207,7 @@ const SalesScreen = ({ navigation }) => {
               color="#34495e"
               containerStyle={styles.iconSpacing}
             />
-            <Text style={styles.label}>Available:</Text>
+            <Text style={styles.label}>የቀረ ብዛት:</Text>
             <Text style={styles.value}>{item.quantity} units</Text>
           </View>
           <View style={styles.infoRow}>
@@ -151,7 +218,7 @@ const SalesScreen = ({ navigation }) => {
               color="#34495e"
               containerStyle={styles.iconSpacing}
             />
-            <Text style={styles.label}>Price:</Text>
+            <Text style={styles.label}>መሸጫ:</Text>
             <Text style={styles.value}>${item.selling_price}</Text>
           </View>
           {item.description && (
@@ -163,7 +230,7 @@ const SalesScreen = ({ navigation }) => {
                 color="#34495e"
                 containerStyle={styles.iconSpacing}
               />
-              <Text style={styles.label}>Desc:</Text>
+              <Text style={styles.label}>Description:</Text>
               <Text style={styles.value}>{item.description}</Text>
             </View>
           )}
@@ -190,11 +257,41 @@ const SalesScreen = ({ navigation }) => {
     </Card>
   );
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#2980b9" />
         <Text style={styles.loadingText}>Loading products...</Text>
+      </View>
+    );
+  }
+
+  if (networkError) {
+    return (
+      <View style={styles.centered}>
+        <Icon name="exclamation-triangle" type="font-awesome" size={50} color="#e74c3c" />
+        <Text style={styles.errorText}>Network Error</Text>
+        <Text style={styles.errorDescription}>
+          Could not connect to the server. Please check your internet connection.
+        </Text>
+        <Button
+          title="Retry"
+          onPress={fetchProducts}
+          buttonStyle={styles.retryButton}
+          titleStyle={styles.retryButtonText}
+          icon={
+            <Icon
+              name="sync"
+              type="font-awesome"
+              color="#fff"
+              containerStyle={{ marginRight: 8 }}
+            />
+          }
+        />
       </View>
     );
   }
@@ -216,7 +313,24 @@ const SalesScreen = ({ navigation }) => {
       {!selectedProduct ? (
         <View style={styles.productListContainer}>
           <Text style={styles.sectionTitle}>Select a Product to Sell</Text>
-          {products.length === 0 ? (
+          {/* Search Input */}
+          <Input
+            placeholder="Search products by name..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            leftIcon={{
+              type: 'font-awesome',
+              name: 'search',
+              color: '#2980b9',
+            }}
+            containerStyle={styles.searchBarContainer}
+            inputContainerStyle={styles.searchBarInputContainer}
+          />
+          {filteredProducts.length === 0 && products.length > 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.noProductsText}>No products found matching your search.</Text>
+            </View>
+          ) : filteredProducts.length === 0 && products.length === 0 ? (
             <View style={styles.centered}>
               <Text style={styles.noProductsText}>
                 No products available for sale
@@ -224,7 +338,7 @@ const SalesScreen = ({ navigation }) => {
             </View>
           ) : (
             <FlatList
-              data={products}
+              data={filteredProducts}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderProductItem}
               contentContainerStyle={styles.list}
@@ -242,7 +356,7 @@ const SalesScreen = ({ navigation }) => {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={90}
           >
-            <ScrollView 
+            <ScrollView
               contentContainerStyle={styles.scrollContent}
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
@@ -273,7 +387,7 @@ const SalesScreen = ({ navigation }) => {
                 <View style={styles.inputColumn}>
                   <Input
                     label="Quantity to Sell"
-                    placeholder="Enter quantity"
+                    placeholder="ብዛት"
                     value={quantitySold}
                     onChangeText={setQuantitySold}
                     keyboardType="numeric"
@@ -286,7 +400,7 @@ const SalesScreen = ({ navigation }) => {
                     containerStyle={styles.inputField}
                   />
                 </View>
-                
+
                 <View style={styles.inputColumn}>
                   <Input
                     label="Price per Unit"
@@ -335,7 +449,7 @@ const SalesScreen = ({ navigation }) => {
                 <Text style={styles.paymentLabel}>Payment Method:</Text>
                 <View style={styles.paymentButtons}>
                   <Button
-                    title="Cash"
+                    title="Cash(ጥሬ ገንዘብ)"
                     onPress={() => setPaymentMethod('cash')}
                     buttonStyle={[
                       styles.paymentButton,
@@ -351,7 +465,7 @@ const SalesScreen = ({ navigation }) => {
                     }
                   />
                   <Button
-                    title="Credit"
+                    title="Credit(ዱቤ)"
                     onPress={() => setPaymentMethod('credit')}
                     buttonStyle={[
                       styles.paymentButton,
@@ -367,7 +481,7 @@ const SalesScreen = ({ navigation }) => {
                     }
                   />
                   <Button
-                    title="Transfer"
+                    title="Bank(አካውንት)"
                     onPress={() => setPaymentMethod('account_transfer')}
                     buttonStyle={[
                       styles.paymentButton,
@@ -428,11 +542,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#ecf0f1',
+    padding: 20,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
     color: '#7f8c8d',
+  },
+  errorText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#e74c3c',
+    marginBottom: 10,
+  },
+  errorDescription: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#8B4513', // Dark brown
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+  },
+  retryButtonText: {
+    fontWeight: 'bold',
+    color: '#fff',
   },
   header: {
     flexDirection: 'row',
@@ -531,6 +668,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7f8c8d',
     textAlign: 'center',
+    marginTop: 20,
   },
   selectedProductCard: {
     borderRadius: 10,
@@ -591,7 +729,9 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
   },
   selectedPayment: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#4DA8DA',
+    borderWidth: 4,
+    borderColor: 'red',
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -628,6 +768,19 @@ const styles = StyleSheet.create({
   inputField: {
     marginBottom: 0,
     paddingHorizontal: 0,
+  },
+  searchBarContainer: {
+    maxWidth: '90%',
+    alignSelf: 'center',
+    marginHorizontal: 16,
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  searchBarInputContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#bdc3c7',
+    paddingHorizontal: 10,
   },
 });
 

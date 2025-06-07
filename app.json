@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "shop_mgmt",
-    "slug": "shop_mgmt",
+    "name": "Dankula",
+    "slug": "dankula_shop_mgmt",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./logo.png",
@@ -20,10 +20,16 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.mrx.dankula_shop_mgmt"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./logo.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "0b20bdfa-fd0e-4de0-9cc4-cb1f662c3349"
+      }
     }
   }
 }

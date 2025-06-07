@@ -1,438 +1,514 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
-import { Text, Card, Button, Divider } from 'react-native-elements';
-import { MaterialIcons } from '@expo/vector-icons';
-import { LineChart, PieChart, BarChart } from 'react-native-chart-kit'; // Ensure BarChart is imported
-import { authApi } from '../api/authApi';
+// ReportsScreen.js
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  TouchableOpacity,
+  FlatList,
+} from 'react-native';
+import { BarChart, PieChart } from 'react-native-chart-kit';
+import { Button, Icon } from 'react-native-elements';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+
+const API_URL = 'https://googsites.pro.et/auth.php';
+const screenWidth = Dimensions.get('window').width;
+
+const reportsApi = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000,
+});
+
+axiosRetry(reportsApi, {
+  retries: 3,
+  retryDelay: (retryCount) => retryCount * 1000,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error),
+  onRetry: (retryCount, error, requestConfig) => {
+    console.log(`Reports API retry attempt ${retryCount} for ${requestConfig.url}: ${error.message}`);
+  },
+});
 
 const ReportsScreen = () => {
-  const [timeframe, setTimeframe] = useState('daily');
-  const [salesData, setSalesData] = useState(null);
-  const [spendingData, setSpendingData] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const navigation = useNavigation();
+  const [timeFilter, setTimeFilter] = useState('daily');
+  const [chartData, setChartData] = useState({ labels: [], datasets: [{ data: [] }] });
+  const [paymentData, setPaymentData] = useState({ labels: [], datasets: [{ data: [] }] });
+  const [totals, setTotals] = useState({ sales: 0, spendings: 0 });
+  const [lowStock, setLowStock] = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [transactions, setTransactions] = useState({ spending: [], sales: [] });
-  const [dailySalesChartData, setDailySalesChartData] = useState(null); // NEW state for daily sales chart
+
+  const aggregateChartData = useCallback((rawData, filterType) => {
+    if (!rawData || !Array.isArray(rawData.labels) || !Array.isArray(rawData.datasets?.[0]?.data)) {
+      return rawData;
+    }
+    const labels = rawData.labels;
+    const data = rawData.datasets[0].data;
+    let newLabels = [];
+    let newData = [];
+
+    if (filterType === 'daily') {
+      for (let i = 0; i < labels.length; i += 4) {
+        const startIdx = i;
+        const endIdx = Math.min(i + 3, labels.length - 1);
+        newLabels.push(`${labels[startIdx]}-${labels[endIdx]}`);
+        const sumVal = data.slice(startIdx, endIdx + 1).reduce((acc, v) => acc + v, 0);
+        newData.push(sumVal);
+      }
+    } else if (filterType === 'monthly') {
+      const chunkSize = Math.ceil(labels.length / 5);
+      for (let i = 0; i < labels.length; i += chunkSize) {
+        const weekIndex = Math.floor(i / chunkSize) + 1;
+        newLabels.push(`Wk ${weekIndex}`);
+        const endIdx = Math.min(i + chunkSize - 1, labels.length - 1);
+        const sumVal = data.slice(i, endIdx + 1).reduce((acc, v) => acc + v, 0);
+        newData.push(sumVal);
+      }
+    } else {
+      return rawData;
+    }
+
+    return {
+      labels: newLabels,
+      datasets: [{ data: newData }],
+    };
+  }, []);
+
+  const fetchReportData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        reportsApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        delete reportsApi.defaults.headers.common['Authorization'];
+        throw new Error('Authentication token not found. Please log in again.');
+      }
+
+      const response = await reportsApi.get('', {
+        params: { action: 'get_reports', filter: timeFilter },
+      });
+
+      if (
+        response.data?.chartData &&
+        response.data?.totals &&
+        response.data?.paymentData &&
+        response.data?.lowStock &&
+        response.data?.trendingProducts
+      ) {
+        const aggregated = aggregateChartData(response.data.chartData, timeFilter);
+        setChartData(aggregated);
+        setTotals(response.data.totals);
+        setPaymentData(response.data.paymentData);
+        setLowStock(response.data.lowStock);
+        setTrending(response.data.trendingProducts);
+      } else {
+        throw new Error('Received invalid data format from server.');
+      }
+    } catch (err) {
+      console.error('Error fetching report data:', err);
+      let msg = 'Could not fetch reports. Please check your internet connection.';
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          msg = err.response.data?.message || `Server Error: ${err.response.status}`;
+          if (err.response.status === 401) {
+            msg = 'Session expired. Please log in again.';
+          }
+        } else if (err.request) {
+          msg = 'Network error: No response from server.';
+        } else {
+          msg = err.message;
+        }
+      } else {
+        msg = err.message;
+      }
+      setError(msg);
+      Alert.alert('Error', msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [timeFilter, aggregateChartData]);
 
   useEffect(() => {
-    loadReportData();
-  }, [timeframe]);
+    fetchReportData();
+  }, [fetchReportData]);
 
-  const loadReportData = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await authApi.getReports(timeframe);
-      
-      setSalesData({
-        total: data.sales?.total || 0,
-        hourlyData: data.sales?.hourlyData || [],
-        paymentMethods: data.sales?.paymentMethods || []
-      });
-      
-      setSpendingData({
-        total: data.spending?.total || 0,
-        categories: data.spending?.categories || []
-      });
+  const renderFilterButton = (filter, title) => (
+    <TouchableOpacity style={{ flex: 1 }} onPress={() => setTimeFilter(filter)}>
+      <Text style={[styles.filterButton, timeFilter === filter && styles.activeFilter]}>
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
 
-      setTransactions({
-        spending: data.transactions?.spending || [],
-        sales: data.transactions?.sales || []
-      });
-
-      setDailySalesChartData(data.sales?.dailySalesChartData || []); // Set NEW daily sales chart data
-      
-    } catch (err) {
-      setError(err.message || 'Failed to fetch reports.');
-      console.error('Error fetching reports:', err);
-      // Reset data on error to prevent displaying stale info
-      setSalesData(null);
-      setSpendingData(null);
-      setTransactions({ spending: [], sales: [] });
-      setDailySalesChartData(null); 
-    } finally {
-      setIsLoading(false);
-    }
+  const pieColors = {
+    cash: '#2ecc71',
+    credit: '#3498db',
+    account_transfer: '#f1c40f',
   };
+  const pieChartData = paymentData.labels.map((method, idx) => ({
+    name: method.charAt(0).toUpperCase() + method.slice(1),
+    population: paymentData.datasets[0].data[idx],
+    color: pieColors[method] || '#bdc3c7',
+    legendFontColor: '#333333',
+    legendFontSize: 12,
+  }));
 
-  const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-    style: {
-      borderRadius: 16
-    },
-    propsForDots: {
-      r: '6',
-      strokeWidth: '2',
-      stroke: '#ffa726'
-    }
-  };
+  const renderLowStockItem = ({ item }) => (
+    <View style={styles.listItem}>
+      <Text style={styles.listItemText}>{item.name}</Text>
+      <Text
+        style={[
+          styles.listItemQty,
+          { color: item.quantity === 0 ? '#e74c3c' : '#e67e22' },
+        ]}
+      >
+        {item.quantity} left
+      </Text>
+    </View>
+  );
+  const renderTrendingItem = ({ item }) => (
+    <View style={styles.listItem}>
+      <Text style={styles.listItemText}>{item.name}</Text>
+      <Text style={styles.listItemQty}>{item.sold_qty} sold</Text>
+    </View>
+  );
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading reports...</Text>
+      <View style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color="#007bff" />
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Error: {error}</Text>
-        <Button title="Retry" onPress={loadReportData} />
+      <View style={styles.centeredContainer}>
+        <Icon name="error-outline" type="material" size={50} color="#e74c3c" />
+        <Text style={styles.errorText}>{error}</Text>
+        <Button title="Try Again" buttonStyle={styles.retryButton} onPress={fetchReportData} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.timeframeButtons}>
-        <Button
-          title="Daily"
-          onPress={() => setTimeframe('daily')}
-          buttonStyle={timeframe === 'daily' ? styles.activeButton : styles.button}
-          titleStyle={styles.buttonText}
-        />
-        <Button
-          title="Weekly"
-          onPress={() => setTimeframe('weekly')}
-          buttonStyle={timeframe === 'weekly' ? styles.activeButton : styles.button}
-          titleStyle={styles.buttonText}
-        />
-        <Button
-          title="Monthly"
-          onPress={() => setTimeframe('monthly')}
-          buttonStyle={timeframe === 'monthly' ? styles.activeButton : styles.button}
-          titleStyle={styles.buttonText}
-        />
-        <Button
-          title="Annual"
-          onPress={() => setTimeframe('annual')}
-          buttonStyle={timeframe === 'annual' ? styles.activeButton : styles.button}
-          titleStyle={styles.buttonText}
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.screenTitle}>Reports</Text>
+
+      <View style={styles.filterContainer}>
+        {renderFilterButton('daily', 'Daily')}
+        {renderFilterButton('weekly', 'Weekly')}
+        {renderFilterButton('monthly', 'Monthly')}
+      </View>
+
+      {/* Bar Chart */}
+      <View style={styles.chartContainer}>
+        <Text style={styles.chartTitle}>Sales and Spendings ({timeFilter})</Text>
+        <BarChart
+          style={{ marginVertical: 16, borderRadius: 16 }}
+          data={chartData}
+          width={screenWidth - 48}
+          height={280}
+          yAxisLabel="$"
+          chartConfig={chartConfig}
+          verticalLabelRotation={-45}
+          fromZero={true}
+          showValuesOnTopOfBars={true}
+          withInnerLines={false}
         />
       </View>
 
-      {salesData && (
-        <Card containerStyle={styles.card}>
-          <Text style={styles.sectionHeader}>Sales Overview</Text>
-          <Divider style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Sales:</Text>
-            <Text style={styles.summaryValue}>${salesData.total?.toFixed(2)}</Text>
-          </View>
+      {/* Pie Chart */}
+      <View style={styles.pieContainer}>
+        <Text style={styles.chartTitle}>Payment Methods (%)</Text>
+        <PieChart
+          data={pieChartData}
+          width={screenWidth - 48}
+          height={240}
+          accessor="population"
+          backgroundColor="transparent"
+          paddingLeft="15"
+          absolute={false}
+          chartConfig={pieChartConfig}
+          center={[0, 0]}
+          hasLegend={true}
+        />
+      </View>
 
-          {/* Sales by Hour (Line Chart) */}
-          <Text style={styles.subHeader}>Sales by Hour</Text>
-          {salesData.hourlyData && salesData.hourlyData.length > 0 ? (
-            <LineChart
-              data={{
-                labels: salesData.hourlyData.map(item => `${item.hour}:00`),
-                datasets: [
-                  {
-                    data: salesData.hourlyData.map(item => item.amount)
-                  }
-                ]
-              }}
-              width={Dimensions.get('window').width - 60}
-              height={220}
-              yAxisLabel="$"
-              chartConfig={chartConfig}
-              bezier
-              style={styles.chartStyle}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No hourly sales data available for this timeframe.</Text>
-          )}
+      {/* Button to Detailed Reports */}
+      <View style={styles.detailButtonContainer}>
+        <Button
+          title="View Detailed Reports"
+          onPress={() => navigation.navigate('DetailedReports')}
+          buttonStyle={styles.detailButton}
+          icon={{ name: 'list-alt', type: 'material', color: 'white', size: 20 }}
+        />
+      </View>
 
-          {/* NEW: Sales by Day (Bar Chart) */}
-          <Text style={styles.subHeader}>Sales by Day of Week</Text>
-          {dailySalesChartData && dailySalesChartData.length > 0 ? (
-            <BarChart
-              data={{
-                labels: dailySalesChartData.map(item => item.day.substring(0, 3)), // Mon, Tue, etc.
-                datasets: [{
-                  data: dailySalesChartData.map(item => item.amount)
-                }]
-              }}
-              width={Dimensions.get('window').width - 60}
-              height={220}
-              yAxisLabel="$"
-              chartConfig={chartConfig} // Using the same chartConfig
-              style={styles.chartStyle}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No daily sales data available for this timeframe.</Text>
-          )}
+      {/* Low Inventory Section */}
+      <View style={styles.listSection}>
+        <Text style={styles.listSectionTitle}>Low Inventory (≤ 5 units)</Text>
+        {lowStock.length === 0 ? (
+          <Text style={styles.emptyText}>All products have sufficient stock.</Text>
+        ) : (
+          <FlatList
+            data={lowStock}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderLowStockItem}
+            scrollEnabled={false}
+          />
+        )}
+      </View>
 
-          {/* Payment Methods */}
-          <Text style={styles.subHeader}>Sales by Payment Method</Text>
-          {salesData.paymentMethods && salesData.paymentMethods.length > 0 && salesData.paymentMethods.some(pm => pm.amount > 0) ? (
-            <PieChart
-              data={salesData.paymentMethods.filter(pm => pm.amount > 0).map((item, index) => ({
-                name: item.method,
-                population: item.amount,
-                color: ['#3498db', '#2ecc71', '#9b59b6', '#f1c40f', '#e67e22'][index % 5], // Example colors
-                legendFontColor: '#7F7F7F',
-                legendFontSize: 15
-              }))}
-              width={Dimensions.get('window').width - 60}
-              height={220}
-              chartConfig={chartConfig}
-              accessor="population"
-              backgroundColor="transparent"
-              paddingLeft="15"
-              absolute
-            />
-          ) : (
-            <Text style={styles.noDataText}>No payment method data available for this timeframe.</Text>
-          )}
-        </Card>
-      )}
+      {/* Trending Products Section */}
+      <View style={styles.listSection}>
+        <Text style={styles.listSectionTitle}>Trending Products ({timeFilter})</Text>
+        {trending.length === 0 ? (
+          <Text style={styles.emptyText}>No sales in this timeframe.</Text>
+        ) : (
+          <FlatList
+            data={trending}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderTrendingItem}
+            scrollEnabled={false}
+          />
+        )}
+      </View>
 
-      {spendingData && (
-        <Card containerStyle={styles.card}>
-          <Text style={styles.sectionHeader}>Spending Overview</Text>
-          <Divider style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total Spending:</Text>
-            <Text style={styles.summaryValue}>-${spendingData.total?.toFixed(2)}</Text>
-          </View>
-
-          {/* Spending by Category (Bar Chart) */}
-          <Text style={styles.subHeader}>Spending by Category</Text>
-          {spendingData.categories && spendingData.categories.length > 0 && spendingData.categories.some(cat => cat.amount > 0) ? (
-            <BarChart
-              data={{
-                labels: spendingData.categories.map(item => item.name),
-                datasets: [
-                  {
-                    data: spendingData.categories.map(item => item.amount)
-                  }
-                ]
-              }}
-              width={Dimensions.get('window').width - 60}
-              height={220}
-              yAxisLabel="$"
-              chartConfig={chartConfig}
-              style={styles.chartStyle}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No spending data available for this timeframe.</Text>
-          )}
-        </Card>
-      )}
-
-      {salesData && spendingData && (
-        <Card containerStyle={styles.card}>
-          <Text style={styles.sectionHeader}>Net Income</Text>
-          <Divider style={styles.divider} />
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Net Income:</Text>
-            <Text style={[styles.summaryValue, salesData.total - spendingData.total >= 0 ? styles.positiveIncome : styles.negativeIncome]}>
-              ${(salesData.total - spendingData.total)?.toFixed(2)}
-            </Text>
-          </View>
-        </Card>
-      )}
-
-      {transactions.spending.length > 0 || transactions.sales.length > 0 ? (
-        <Card containerStyle={styles.card}>
-          <Text style={styles.sectionHeader}>Recent Transactions</Text>
-          <Divider style={styles.divider} />
-          {transactions.sales.length > 0 && (
-            <View>
-              <Text style={styles.subHeader}>Sales Transactions</Text>
-              {transactions.sales.map((item, index) => (
-                <View key={`sale-${index}`} style={styles.transactionItem}>
-                  <Text style={styles.transactionDate}>
-                    {new Date(item.transaction_date).toLocaleString()}
-                  </Text>
-                  <View style={styles.transactionDetails}>
-                    <Text style={styles.transactionCategory}>{item.product_name}</Text>
-                    <Text style={styles.transactionReason}>Qty: {item.quantity}, Method: {item.payment_method}</Text>
-                    {item.comment ? <Text style={styles.transactionComment}>{item.comment}</Text> : null}
-                  </View>
-                  <Text style={styles.transactionAmountGreen}>+${item.amount.toFixed(2)}</Text>
-                </View>
-              ))}
-              <Divider style={styles.smallDivider} />
-            </View>
-          )}
-
-          {transactions.spending.length > 0 && (
-            <View>
-              <Text style={styles.subHeader}>Spending Transactions</Text>
-              {transactions.spending.map((item, index) => (
-                <View key={`spending-${index}`} style={styles.transactionItem}>
-                  <Text style={styles.transactionDate}>
-                    {new Date(item.transaction_date).toLocaleString()}
-                  </Text>
-                  <View style={styles.transactionDetails}>
-                    <Text style={styles.transactionCategory}>{item.category}</Text>
-                    <Text style={styles.transactionReason}>{item.reason}</Text>
-                    {item.comment ? <Text style={styles.transactionComment}>{item.comment}</Text> : null}
-                  </View>
-                  <Text style={styles.transactionAmountRed}>-${item.amount.toFixed(2)}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </Card>
-      ) : (
-        <Card containerStyle={styles.card}>
-          <Text style={styles.noDataText}>No transactions available for this timeframe.</Text>
-        </Card>
-      )}
+      {/* Summary Cards */}
+      <View style={styles.summaryContainer}>
+        <View style={styles.card}>
+          <Icon name="trending-up" type="material" color="#2ecc71" size={24} />
+          <Text style={styles.cardTitle}>Total Sales</Text>
+          <Text style={[styles.amount, { color: '#2ecc71' }]}>
+            ${totals.sales.toFixed(2)}
+          </Text>
+        </View>
+        <View style={styles.card}>
+          <Icon name="trending-down" type="material" color="#e74c3c" size={24} />
+          <Text style={styles.cardTitle}>Total Spendings</Text>
+          <Text style={[styles.amount, { color: '#e74c3c' }]}>
+            ${totals.spendings.toFixed(2)}
+          </Text>
+        </View>
+      </View>
     </ScrollView>
   );
 };
 
+const chartConfig = {
+  backgroundColor: '#ffffff',
+  backgroundGradientFrom: '#ffffff',
+  backgroundGradientTo: '#f1f3f5',
+  decimalPlaces: 2,
+  color: () => `rgba(0, 123, 255, 1)`,
+  fillShadowGradient: '#007bff',
+  fillShadowGradientOpacity: 1,
+  labelColor: () => `rgba(33, 37, 41, 1)`,
+  style: {
+    borderRadius: 16,
+  },
+  propsForBackgroundLines: {
+    stroke: '#e9ecef',
+  },
+  barPercentage: 0.6,
+  propsForLabels: {
+    fontSize: '12',
+    fontWeight: '600',
+  },
+};
+
+const pieChartConfig = {
+  backgroundColor: '#ffffff',
+  backgroundGradientFrom: '#ffffff',
+  backgroundGradientTo: '#ffffff',
+  color: () => `rgba(0, 0, 0, 1)`,
+  labelColor: () => `rgba(0, 0, 0, 1)`,
+  style: {
+    borderRadius: 16,
+  },
+};
+
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    padding: 10,
-    backgroundColor: '#f5f5f5',
+    flexGrow: 1,
+    padding: 16,
+    backgroundColor: '#f8f9fa',
   },
-  centered: {
+  centeredContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 20,
   },
-  timeframeButtons: {
+  screenTitle: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: '#2d3436',
+    marginBottom: 16,
+  },
+  filterContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 15,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    backgroundColor: '#e9ecef',
+    borderRadius: 12,
+    padding: 4,
   },
-  button: {
-    backgroundColor: '#ccc',
-    borderRadius: 8,
+  filterButton: {
     flex: 1,
-    marginHorizontal: 5,
-  },
-  activeButton: {
-    backgroundColor: '#3498db',
+    paddingVertical: 12,
     borderRadius: 8,
-    flex: 1,
-    marginHorizontal: 5,
+    textAlign: 'center',
+    color: '#6c757d',
+    fontWeight: '600',
+    fontSize: 15,
   },
-  buttonText: {
+  activeFilter: {
+    backgroundColor: '#007bff',
     color: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  card: {
-    borderRadius: 10,
-    marginBottom: 15,
-    elevation: 3, // For Android shadow
-    shadowColor: '#000', // For iOS shadow
+  chartContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowRadius: 6,
+    elevation: 3,
+    marginBottom: 32,
   },
-  sectionHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#333',
-  },
-  subHeader: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 15,
-    marginBottom: 10,
-    color: '#555',
-  },
-  divider: {
-    marginVertical: 10,
-    backgroundColor: '#e0e0e0',
-  },
-  smallDivider: {
-    marginVertical: 5,
-    backgroundColor: '#e0e0e0',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  summaryLabel: {
-    fontSize: 16,
-    color: '#666',
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  positiveIncome: {
-    color: '#2ecc71',
-  },
-  negativeIncome: {
-    color: '#e74c3c',
-  },
-  noDataText: {
-    textAlign: 'center',
-    fontStyle: 'italic',
-    color: '#7f8c8d',
-    paddingVertical: 20,
-  },
-  chartStyle: {
-    marginVertical: 8,
-    borderRadius: 16
-  },
-  transactionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  pieContainer: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 10,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+    marginBottom: 24,
+  },
+  detailButtonContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  detailButton: {
+    backgroundColor: '#6c5ce7',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  chartTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#343a40',
+    textTransform: 'capitalize',
+  },
+  listSection: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 32,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  listSectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#2d3436',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#e9ecef',
   },
-  transactionDetails: {
+  listItemText: {
+    fontSize: 15,
+    color: '#343a40',
+  },
+  listItemQty: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+    marginBottom: 24,
+  },
+  card: {
     flex: 1,
-    paddingHorizontal: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  transactionDate: {
-    fontSize: 11,
-    color: '#7f8c8d',
-    minWidth: 80,
-    textAlign: 'left',
+  cardTitle: {
+    fontSize: 16,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginTop: 8,
   },
-  transactionCategory: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    color: '#34495e',
+  amount: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginTop: 4,
   },
-  transactionReason: {
-    color: '#555',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  transactionComment: {
-    fontStyle: 'italic',
-    color: '#95a5a6',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  transactionAmountRed: {
+  errorText: {
     color: '#e74c3c',
-    fontWeight: 'bold',
-    minWidth: 70,
-    textAlign: 'right',
-    fontSize: 14,
+    fontSize: 16,
+    marginVertical: 20,
+    textAlign: 'center',
   },
-  transactionAmountGreen: {
-    color: '#2ecc71',
-    fontWeight: 'bold',
-    minWidth: 70,
-    textAlign: 'right',
-    fontSize: 14,
+  retryButton: {
+    backgroundColor: '#007bff',
+    borderRadius: 12,
+    paddingHorizontal: 30,
+    paddingVertical: 10,
   },
 });
 

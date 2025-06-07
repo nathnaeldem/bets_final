@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -6,10 +6,36 @@ import {
   ActivityIndicator,
   Alert,
   TouchableOpacity,
+  Text
 } from 'react-native';
-import { Text, Button, Card, Icon, Overlay } from 'react-native-elements';
+import { Button, Card, Icon, Overlay } from 'react-native-elements';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api/authApi';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'https://googsites.pro.et/auth.php';
+
+const productDetailApi = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000,
+});
+
+axiosRetry(productDetailApi, {
+  retries: 3,
+  retryDelay: (retryCount) => {
+    return retryCount * 1000;
+  },
+  retryCondition: (error) => {
+    return axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error);
+  },
+  onRetry: (retryCount, error, requestConfig) => {
+    console.log(`Product detail API retry attempt ${retryCount} for ${requestConfig.url}: ${error.message}`);
+  },
+});
 
 const ProductDetailScreen = ({ route, navigation }) => {
   const { productId } = route.params;
@@ -22,65 +48,119 @@ const ProductDetailScreen = ({ route, navigation }) => {
   const statusOptions = ['ታዟል', 'በስቶክ', 'ተሽጧል'];
   const statusValues = ['ordered', 'in_store', 'sold'];
 
-  const fetchProductDetails = async () => {
+  const fetchProductDetails = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setLoading(true);
-      const response = await authApi.getProductDetails(productId);
-      setProduct(response.product);
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        productDetailApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        delete productDetailApi.defaults.headers.common['Authorization'];
+        Alert.alert('Authentication Required', 'Please log in to view product details.');
+        setLoading(false);
+        return;
+      }
+
+      const response = await productDetailApi.post(
+        '',
+        {},
+        {
+          params: { action: 'getProductDetails', productId },
+        }
+      );
+      
+      if (response.data && response.data.product) {
+        setProduct(response.data.product);
+      } else {
+        setError('Product not found or invalid response.');
+      }
     } catch (err) {
-      setError('Failed to load product details');
-      console.error(err);
+      console.error('Fetch product details error:', err);
+      let errorMessage = 'Failed to load product details.';
+
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          errorMessage = err.response.data?.message || `Server Error: ${err.response.status}`;
+        } else if (err.request) {
+          errorMessage = 'Network Error: No response from server after multiple attempts.';
+        } else {
+          errorMessage = err.message || 'An unknown error occurred.';
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
   useEffect(() => {
     fetchProductDetails();
-  }, [productId]);
+  }, [fetchProductDetails]);
 
   const updateProductStatus = async (newStatus) => {
+    setLoading(true);
+    setStatusModalVisible(false);
     try {
-      setLoading(true);
-      if (!product || typeof product.quantity === 'undefined') {
+      if (!product || typeof product.quantity === 'undefined' || typeof product.id === 'undefined') {
         Alert.alert('ስህተት', 'የንብረት መረጃ ያልተሟላ ነው።');
         setLoading(false);
-        setStatusModalVisible(false);
         return;
       }
-      const response = await authApi.updateProductStatus(
-        productId,
-        newStatus,
-        product.quantity
+      
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Authentication Required', 'Please log in to update product status.');
+        setLoading(false);
+        return;
+      }
+      productDetailApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      const response = await productDetailApi.post(
+        '',
+        {
+          product_id: productId,
+          new_status: newStatus,
+          quantity: product.quantity,
+        },
+        {
+          params: { action: 'updateProductStatus' },
+        }
       );
-      if (response && response.success) {
+
+      if (response.data && response.data.success) {
         setProduct((prev) => ({ ...prev, status: newStatus }));
         Alert.alert('ተሳክቷል', 'የእቃው ሁኔታ ተቀይሯል።');
       } else {
         Alert.alert(
           'ስህተት',
-          response?.message || 'የሁኔታ ማዘመን አልተሳካም።'
+          response.data?.message || 'የሁኔታ ማዘመን አልተሳካም።'
         );
       }
     } catch (err) {
-      Alert.alert('ስህተት', 'የእቃ ሁኔታ ማዘመን አልተሳካም።');
-      console.error(err);
+      console.error('Update product status error:', err);
+      let errorMessage = 'Failed to update product status.';
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          errorMessage = err.response.data?.message || `Server Error: ${err.response.status}`;
+        } else if (err.request) {
+          errorMessage = 'Network Error: No response from server after multiple attempts.';
+        } else {
+          errorMessage = err.message || 'An unknown error occurred.';
+        }
+      }
+      Alert.alert('ስህተት', errorMessage);
     } finally {
       setLoading(false);
-      setStatusModalVisible(false);
     }
   };
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'ordered':
-        return '#e67e22'; // orange
-      case 'in_store':
-        return '#27ae60'; // green
-      case 'sold':
-        return '#2980b9'; // blue
-      default:
-        return '#7f8c8d'; // grey
+      case 'ordered': return '#e67e22';
+      case 'in_store': return '#27ae60';
+      case 'sold': return '#2980b9';
+      default: return '#7f8c8d';
     }
   };
 
@@ -176,7 +256,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 containerStyle={styles.iconSpacing}
               />
               <Text style={styles.label}>የመግቢያ ዋጋ:</Text>
-              <Text style={styles.value}>${product.import_price}</Text>
+              <Text style={styles.value}>ETB{product.import_price}</Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -188,7 +268,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                 containerStyle={styles.iconSpacing}
               />
               <Text style={styles.label}>የሽያጭ ዋጋ:</Text>
-              <Text style={styles.value}>${product.selling_price}</Text>
+              <Text style={styles.value}>ETB{product.selling_price}</Text>
             </View>
 
             <View style={styles.infoRow}>
@@ -201,7 +281,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
               />
               <Text style={styles.label}>ትርፍ:</Text>
               <Text style={styles.value}>
-                ${(product.selling_price - product.import_price).toFixed(2)} (
+                ETB{(product.selling_price - product.import_price).toFixed(2)} (
                 {(
                   ((product.selling_price - product.import_price) /
                     product.import_price) *
@@ -241,7 +321,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                   {product.status.replace('_', ' ').toUpperCase()}
                 </Text>
               </View>
-              {user?.role === 'admin' && (
+              {/* {user?.role === 'admin' && (
                 <TouchableOpacity
                   style={styles.fab}
                   onPress={() => setStatusModalVisible(true)}
@@ -253,7 +333,7 @@ const ProductDetailScreen = ({ route, navigation }) => {
                     color="#fff"
                   />
                 </TouchableOpacity>
-              )}
+              )} */}
             </View>
           </View>
 
@@ -278,49 +358,49 @@ const ProductDetailScreen = ({ route, navigation }) => {
         onBackdropPress={() => setStatusModalVisible(false)}
         overlayStyle={styles.overlay}
       >
-        <Text style={styles.overlayTitle}>የእቃ ሁኔታ አዘምን</Text>
-        {statusOptions.map((label, index) => (
+        <View>
+          <Text style={styles.overlayTitle}>የእቃ ሁኔታ አዘምን</Text>
+          {statusOptions.map((label, index) => (
+            <Button
+              key={statusValues[index]}
+              title={label}
+              onPress={() => updateProductStatus(statusValues[index])}
+              buttonStyle={[
+                styles.statusOptionButton,
+                {
+                  backgroundColor:
+                    statusValues[index] === 'ordered'
+                      ? '#e67e22'
+                      : statusValues[index] === 'in_store'
+                      ? '#27ae60'
+                      : '#2980b9',
+                },
+              ]}
+              containerStyle={{ marginVertical: 6 }}
+              icon={
+                <Icon
+                  name={
+                    statusValues[index] === 'sold'
+                      ? 'check-circle'
+                      : statusValues[index] === 'in_store'
+                      ? 'warehouse'
+                      : 'truck'
+                  }
+                  type="font-awesome-5"
+                  color="#fff"
+                  containerStyle={{ marginRight: 8 }}
+                />
+              }
+            />
+          ))}
           <Button
-            key={statusValues[index]}
-            title={label}
-            onPress={() =>
-              updateProductStatus(statusValues[index])
-            }
-            buttonStyle={[
-              styles.statusOptionButton,
-              {
-                backgroundColor:
-                  statusValues[index] === 'ordered'
-                    ? '#e67e22'
-                    : statusValues[index] === 'in_store'
-                    ? '#27ae60'
-                    : '#2980b9',
-              },
-            ]}
-            containerStyle={{ marginVertical: 6 }}
-            icon={
-              <Icon
-                name={
-                  statusValues[index] === 'sold'
-                    ? 'check-circle'
-                    : statusValues[index] === 'in_store'
-                    ? 'warehouse'
-                    : 'truck'
-                }
-                type="font-awesome-5"
-                color="#fff"
-                containerStyle={{ marginRight: 8 }}
-              />
-            }
+            title="መሰረዝ"
+            type="outline"
+            onPress={() => setStatusModalVisible(false)}
+            buttonStyle={styles.cancelButton}
+            containerStyle={{ marginTop: 10 }}
           />
-        ))}
-        <Button
-          title="መሰረዝ"
-          type="outline"
-          onPress={() => setStatusModalVisible(false)}
-          buttonStyle={styles.cancelButton}
-          containerStyle={{ marginTop: 10 }}
-        />
+        </View>
       </Overlay>
     </View>
   );
@@ -333,6 +413,22 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#ecf0f1',
+  },
+  errorText: {
+    color: '#c0392b',
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#2980b9',
+    borderRadius: 8,
+    paddingHorizontal: 20,
   },
   cardContainer: {
     borderRadius: 12,
@@ -439,22 +535,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 8,
     paddingVertical: 12,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ecf0f1',
-  },
-  errorText: {
-    color: '#c0392b',
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#2980b9',
-    borderRadius: 8,
-    paddingHorizontal: 20,
   },
 });
 

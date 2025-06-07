@@ -1,3 +1,4 @@
+// AppNavigator.js - NO CHANGES NEEDED HERE
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -9,20 +10,15 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // App Screens (add your main app screens here)
 import HomeScreen from '../screens/HomeScreen';
-
-// Add these imports
 import ProductListScreen from '../screens/ProductListScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import AddProductScreen from '../screens/AddProductScreen';
-// Add import
 import EditProductScreen from '../screens/EditProductScreen';
 import SalesScreen from '../screens/SalesScreen';
-// Add this import at the top
 import SpendingScreen from '../screens/SpendingScreen';
-// Add this import
-// Add this import
 import ReportsScreen from '../screens/ReportsScreen';
-
+import DetailedReportsScreen from '../screens/DetailedReportsScreen';
+import AdminUserManagement from '../screens/auth/AdminUserManagement';
 const Stack = createStackNavigator();
 
 const AuthStack = () => {
@@ -34,7 +30,6 @@ const AuthStack = () => {
   );
 };
 
-// Update the AppStack to include product screens
 const AppStack = () => {
   return (
     <Stack.Navigator>
@@ -46,15 +41,18 @@ const AppStack = () => {
       <Stack.Screen name="Sales" component={SalesScreen} options={{ title: 'Product Sales' }} />
       <Stack.Screen name="Spending" component={SpendingScreen} options={{ title: 'Record Spending' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Analytics Dashboard' }} />
+      <Stack.Screen name="AdminUserManagement" component={AdminUserManagement} options={{ title: 'Admin User Management' }} />
+      <Stack.Screen name="DetailedReports" component={DetailedReportsScreen} options={{ title: 'Detailed Reports' }} />
     </Stack.Navigator>
   );
 };
 
 const AppNavigator = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth(); // 'loading' here is for initial app load check
 
   if (loading) {
-    // You can create a loading screen here
+    // This 'loading' state is for the *initial* app load (checking AsyncStorage).
+    // You can replace 'null' with a proper splash screen component if desired.
     return null;
   }
 

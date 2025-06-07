@@ -4,7 +4,41 @@ import { Text, Button, Input, Card } from 'react-native-elements';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
-import { authApi } from '../api/authApi';
+import axios from 'axios';
+import axiosRetry from 'axios-retry'; // Import axios-retry
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Define the API URL
+const API_URL = 'https://googsites.pro.et/auth.php';
+
+// --- Configure an Axios instance for product-related operations ---
+// This instance will handle retries and timeouts for its requests
+const productApi = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  timeout: 15000, // Set a timeout (e.g., 15 seconds) to trigger retries on slow responses
+});
+
+// Apply axios-retry to the productApi instance
+axiosRetry(productApi, {
+  retries: 3, // Number of retry attempts
+  retryDelay: (retryCount) => {
+    return retryCount * 1000; // Exponential backoff: 1s, 2s, 4s
+  },
+  retryCondition: (error) => {
+    // Retry only on network errors (timeouts, no internet, etc.)
+    // or 5xx server errors (transient server issues)
+    return axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error);
+  },
+  onRetry: (retryCount, error, requestConfig) => {
+    console.log(`Product API retry attempt ${retryCount} for ${requestConfig.url}: ${error.message}`);
+    // Optionally, you could show a very subtle toast message here like "Retrying..."
+  },
+});
+// --- End Axios instance configuration ---
+
 
 const AddProductScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -34,41 +68,85 @@ const AddProductScreen = ({ navigation }) => {
 
   const handleAddProduct = async (values, { resetForm }) => {
     if (user?.role !== 'admin') {
-      Alert.alert('ስህተት', 'ምርቶችን ማከል በአድሚኖች ብቻ ይቻላል');
+      Alert.alert('Error', 'ምርቶችን ማከል በአድሚኖች ብቻ ይቻላል');
       return;
     }
 
+    setLoading(true); // Start loading immediately
     try {
-      setLoading(true);
-      const response = await authApi.addProduct({
+      const token = await AsyncStorage.getItem('token');
+      // No need to set headers object directly, productApi handles it
+      // but we need to set the Authorization header dynamically if a token exists
+      if (token) {
+        productApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      } else {
+        // Ensure Authorization header is removed if no token
+        delete productApi.defaults.headers.common['Authorization'];
+      }
+
+      const productPayload = {
         ...values,
         status: 'in_store',
-      });
+      };
 
-      if (response.success) {
+      // Use the configured productApi instance
+      const response = await productApi.post(
+        '', // Empty string because baseURL already includes the full URL
+        productPayload,
+        {
+          params: { action: 'addProduct' },
+          // Headers are already set on the productApi instance, no need to duplicate
+          // headers: headers, // <-- REMOVE THIS LINE
+        }
+      );
+
+      // Axios-retry will only let the error propagate if all retries fail,
+      // or if the error condition is not met (e.g., 401 Unauthorized).
+      if (response.status === 200 || response.status === 201) { // 200 OK or 201 Created are both valid success codes
         Alert.alert(
           'ስኬት',
-          'ምርቱ በትክክል ታከለ',
+          'በትክክል ተመዝግቧል ',
           [{ text: 'OK', onPress: () => {
             resetForm();
             navigation.navigate('ProductList');
           }}]
         );
       } else {
-        Alert.alert('ስህተት', response.message || 'ምርት ማከል አልተሳካም');
+        // This block might be less frequently hit if using axios-retry effectively,
+        // as 5xx errors would trigger retries. But good for non-2xx responses.
+        Alert.alert('ስህተት', response.data?.message || 'ምርት ማከል አልተሳካም');
       }
     } catch (err) {
-      Alert.alert('ስህተት', 'ምርት ማከል አልተሳካም');
-      console.error(err);
+      console.error('Add product error:', err); // Log the full error object for better debugging
+
+      let errorMessage = 'ምርት ማከል አልተሳካም';
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          // Server responded with a status code outside 2xx (e.g., 400, 403, 404)
+          console.error('Response data:', err.response.data);
+          console.error('Response status:', err.response.status);
+          errorMessage = err.response.data?.message || `Error: ${err.response.status}`;
+        } else if (err.request) {
+          // Request was made but no response received (after all retries)
+          console.error('Request:', err.request);
+          errorMessage = 'የአውታረ መረብ ችግር: ከሰርቨሩ ምላሽ አልተገኘም (ከብዙ ሙከራዎች በኋላ).'; // Network issue: no response from server (after multiple attempts).
+        } else {
+          // Something else happened (e.g., setting up the request)
+          console.error('Error message:', err.message);
+          errorMessage = err.message || 'አንድ ያልታወቀ ስህተት ተከስቷል'; // An unknown error occurred.
+        }
+      }
+
+      Alert.alert('ስህተት', errorMessage);
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop loading regardless of success or failure
     }
   };
 
   return (
     <ScrollView style={styles.container}>
       <Card>
-        <Card.Title h4>አዲስ ምርት ያክሉ</Card.Title>
+        <Card.Title h4>አዲስ እቃ መመዝገቢያ</Card.Title>
         <Card.Divider />
 
         <Formik
@@ -85,8 +163,8 @@ const AddProductScreen = ({ navigation }) => {
           {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
             <View>
               <Input
-                label="የምርት ስም (Product Name)"
-                placeholder="የምርት ስም"
+                label="Product Name"
+                placeholder="ስም"
                 onChangeText={handleChange('name')}
                 onBlur={handleBlur('name')}
                 value={values.name}
@@ -96,8 +174,8 @@ const AddProductScreen = ({ navigation }) => {
               />
 
               <Input
-                label="መግለጫ - አማራጭ (Description - Optional)"
-                placeholder="የምርቱን መግለጫ"
+                label="Description - Optional"
+                placeholder="የምርቱ መግለጫ"
                 onChangeText={handleChange('description')}
                 onBlur={handleBlur('description')}
                 value={values.description}
@@ -108,7 +186,7 @@ const AddProductScreen = ({ navigation }) => {
               />
 
               <Input
-                label="ብዛት (Quantity)"
+                label="Quantity"
                 placeholder="ብዛት"
                 onChangeText={handleChange('quantity')}
                 onBlur={handleBlur('quantity')}
@@ -120,7 +198,7 @@ const AddProductScreen = ({ navigation }) => {
               />
 
               <Input
-                label="የማምጫ ዋጋ ($) (Import Price)"
+                label="Import Price"
                 placeholder="የማምጫ ዋጋ"
                 onChangeText={handleChange('import_price')}
                 onBlur={handleBlur('import_price')}
@@ -132,7 +210,7 @@ const AddProductScreen = ({ navigation }) => {
               />
 
               <Input
-                label="የሽያጭ ዋጋ ($) (Selling Price)"
+                label="Selling Price"
                 placeholder="የሽያጭ ዋጋ"
                 onChangeText={handleChange('selling_price')}
                 onBlur={handleBlur('selling_price')}
