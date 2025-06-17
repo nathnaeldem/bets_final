@@ -4,6 +4,11 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: POST, GET, OPTIONS, PUT, DELETE"); // Added PUT, DELETE for completeness
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
 require 'vendor/autoload.php';
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -14,9 +19,9 @@ $algorithm = 'HS256';
 
 // --- Database Configuration ---
 $dbHost = 'localhost';
-$dbName = 'nathnahz_shop';
-$dbUser = 'nathnahz_shop';
-$dbPass = 'FAzVMbbAjTBpG64NPGqD';
+$dbName = 'nyvjzrsb_shopmgmt';
+$dbUser = 'nyvjzrsb_shopmgmt';
+$dbPass = '69rLztX2x4R6bmPAUbxY';
 
 try {
     $pdo = new PDO("mysql:host=$dbHost;dbname=$dbName;charset=utf8", $dbUser, $dbPass);
@@ -82,7 +87,14 @@ $loggedInUserId = null;
 $organizationId = null;
 
 // --- Authentication Check for Protected Routes ---
-$protectedRoutes = ['addProduct', 'updateProduct', 'updateProductStatus', 'getProducts', 'getProductDetails', 'sellProduct', 'add_spending', 'get_reports','change_password','register_user'];
+$protectedRoutes = ['addProduct', 'updateProduct', 'updateProductStatus', 'getProducts', 'getProductDetails', 'sellProduct', 'add_spending','add_car_spending', 'get_reports','change_password','register_user','create_worker','update_vehicle','get_vehicless','create_vehicle','get_unpaid_workers','get_carwash_spendings',
+    'get_vehicles',               // ← make sure this is here
+    'create_carwash_transaction',
+    'pay_commission',
+    'create_vehicle',
+    'update_vehicle','get_commission_summary',
+  'get_carwash_transactions',
+  'get_paid_commissions'];
 if (in_array($action, $protectedRoutes)) {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     $token = null;
@@ -195,80 +207,101 @@ try {
             ]);
             break;
 
-        case 'register':
-            $required = ['username', 'email', 'password', 'organization_name'];
-            foreach ($required as $field) {
-                if (empty($input[$field])) {
-                    http_response_code(400);
-                    echo json_encode(['message' => "$field is required"]);
-                    exit;
-                }
+       case 'register':
+    // 1) Required fields
+    $required = ['username', 'email', 'password'];
+    foreach ($required as $field) {
+        if (empty($input[$field])) {
+            http_response_code(400);
+            echo json_encode(['message' => "$field is required"]);
+            exit;
+        }
+    }
+
+    $username = trim($input['username']);
+    $email    = filter_var(trim($input['email']), FILTER_SANITIZE_EMAIL);
+    $password = $input['password'];
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['message' => 'Invalid email format']);
+        exit;
+    }
+
+    // 2) Make sure username/email aren't already taken
+    $stmt = $pdo->prepare("SELECT id FROM users WHERE username = :username OR email = :email");
+    $stmt->execute([':username' => $username, ':email' => $email]);
+    if ($stmt->fetch()) {
+        http_response_code(409);
+        echo json_encode(['message' => 'Username or email already exists']);
+        exit;
+    }
+
+    // 3) Begin a transaction so that org + user either both succeed or both roll back
+    $pdo->beginTransaction();
+    try {
+        // 4) If no organization_id provided, create a new org
+        if (empty($input['organization_id'])) {
+            // make sure they gave us a name for the new org
+            if (empty($input['organization_name'])) {
+                throw new Exception('organization_name is required when organization_id is empty');
             }
+            $orgName = trim($input['organization_name']);
+            
+            // Insert new organization
+            $orgStmt = $pdo->prepare(
+                "INSERT INTO organizations (name, created_at) 
+                 VALUES (:name, NOW())"
+            );
+            $orgStmt->execute([':name' => $orgName]);
+            $organizationId = $pdo->lastInsertId();
+        } else {
+            // or use the one they gave us
+            $organizationId = (int) $input['organization_id'];
+        }
 
-            $username = trim($input['username']);
-            $email = filter_var(trim($input['email']), FILTER_SANITIZE_EMAIL);
-            $password = $input['password'];
-            $organizationName = trim($input['organization_name']);
+        // 5) Create the new user
+        $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+        $userStmt = $pdo->prepare(
+            "INSERT INTO users 
+                (username, email, password, organization_id, role, is_active, created_at) 
+             VALUES 
+                (:username, :email, :password, :org_id, :role, 1, NOW())"
+        );
+        $userStmt->execute([
+            ':username' => $username,
+            ':email'    => $email,
+            ':password' => $hashedPassword,
+            ':org_id'   => $organizationId,
+            ':role'     => 'admin'   // first user becomes the org admin
+        ]);
+        $newUserId = $pdo->lastInsertId();
 
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                http_response_code(400);
-                echo json_encode(['message' => 'Invalid email format']);
-                exit;
-            }
+        // 6) Set the owner_user_id on the org if we just created it
+        if (empty($input['organization_id'])) {
+            $updateOrg = $pdo->prepare(
+                "UPDATE organizations 
+                    SET owner_user_id = :owner_id 
+                  WHERE id = :org_id"
+            );
+            $updateOrg->execute([
+                ':owner_id' => $newUserId,
+                ':org_id'   => $organizationId
+            ]);
+        }
 
-            // Check existing user (globally unique username/email assumed)
-            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = :username OR email = :email");
-            $stmt->execute([':username' => $username, ':email' => $email]);
-            if ($stmt->fetch()) {
-                http_response_code(409);
-                echo json_encode(['message' => 'Username or email already exists']);
-                exit;
-            }
+        // 7) Record activity and commit
+        recordActivity($pdo, $newUserId, 'registration', "User registered", $organizationId);
+        $pdo->commit();
 
-            // Check if organization name is globally unique (optional, but good practice)
-            $stmt = $pdo->prepare("SELECT id FROM organizations WHERE name = :name");
-            $stmt->execute([':name' => $organizationName]);
-            if ($stmt->fetch()) {
-                http_response_code(409);
-                echo json_encode(['message' => 'Organization name already exists. Please choose a different name.']);
-                exit;
-            }
-
-            $pdo->beginTransaction();
-            try {
-                // Create new organization
-                $stmt = $pdo->prepare("INSERT INTO organizations (name) VALUES (:name)");
-                $stmt->execute([':name' => $organizationName]);
-                $newOrganizationId = $pdo->lastInsertId();
-
-                // Create user and link to the new organization
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("INSERT INTO users (username, email, password, organization_id, role, is_active)
-                                       VALUES (:username, :email, :password, :organization_id, :role, 1)"); // Default role 'admin' for creator
-                $stmt->execute([
-                    ':username' => $username,
-                    ':email' => $email,
-                    ':password' => $hashedPassword,
-                    ':organization_id' => $newOrganizationId,
-                    ':role' => 'admin' // First user of an org is often admin
-                ]);
-                $newUserId = $pdo->lastInsertId();
-
-                // Update organization with owner_user_id
-                $stmt = $pdo->prepare("UPDATE organizations SET owner_user_id = :user_id WHERE id = :organization_id");
-                $stmt->execute([':user_id' => $newUserId, ':organization_id' => $newOrganizationId]);
-
-                recordActivity($pdo, $newUserId, 'registration', "User registered and created organization '$organizationName'", $newOrganizationId);
-
-                $pdo->commit();
-                http_response_code(201);
-                echo json_encode(['message' => 'User and organization registered successfully']);
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                http_response_code(500);
-                echo json_encode(['message' => 'Registration failed: ' . $e->getMessage()]);
-            }
-            break;
+        http_response_code(201);
+        echo json_encode(['message' => 'User and organization registered successfully']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['message' => 'Registration failed: ' . $e->getMessage()]);
+    }
+    break;
 
         case 'reset':
             // ... (No direct organization_id change here unless for activity logging)
@@ -300,6 +333,17 @@ try {
             echo json_encode(['message' => 'If the email exists, a reset link has been sent']);
             break;
 
+     
+
+
+
+
+
+
+
+
+
+
         case 'add_spending':
             // $loggedInUserId and $organizationId are already set from auth check
             $data = $input; // Use $input directly as it's already decoded
@@ -310,6 +354,38 @@ try {
             }
 
             $stmt = $pdo->prepare("INSERT INTO spendings (user_id, amount, category, reason, comment, organization_id)
+                                  VALUES (:user_id, :amount, :category, :reason, :comment, :organization_id)");
+            try {
+                $result = $stmt->execute([
+                    ':user_id' => $loggedInUserId, // Use the ID of the authenticated user
+                    ':amount' => $data['amount'],
+                    ':category' => $data['category'],
+                    ':reason' => $data['reason'],
+                    ':comment' => $data['comment'] ?? null,
+                    ':organization_id' => $organizationId // Use authenticated user's org ID
+                ]);
+
+                if ($result) {
+                    recordActivity($pdo, $loggedInUserId, 'spending_record',
+                                 "Recorded {$data['category']} spending of {$data['amount']}", $organizationId);
+                    echo json_encode(['success' => true, 'message' => 'Spending recorded successfully']);
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to record spending']);
+                }
+            } catch (PDOException $e) {
+                echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+            }
+            break;
+             case 'add_car_spending':
+            // $loggedInUserId and $organizationId are already set from auth check
+            $data = $input; // Use $input directly as it's already decoded
+
+            if (!isset($data['amount'], $data['category'], $data['reason'])) {
+                echo json_encode(['success' => false, 'message' => 'Missing required fields: amount, category, reason']);
+                exit;
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO car_spendings (user_id, amount, category, reason, comment, organization_id)
                                   VALUES (:user_id, :amount, :category, :reason, :comment, :organization_id)");
             try {
                 $result = $stmt->execute([
@@ -351,7 +427,7 @@ try {
             $pdo->beginTransaction();
             try {
                 $stmt = $pdo->prepare("INSERT INTO products (name, description, category, import_price, selling_price, organization_id)
-                                       VALUES (:name, :description, :category, :import_price, :selling_price, :organization_id)");
+                                         VALUES (:name, :description, :category, :import_price, :selling_price, :organization_id)");
                 $stmt->execute([
                     ':name' => $input['name'],
                     ':description' => $input['description'] ?? '',
@@ -363,24 +439,13 @@ try {
                 $productId = $pdo->lastInsertId();
 
                 $stmt = $pdo->prepare("INSERT INTO product_inventory (product_id, quantity, status)
-                                       VALUES (:product_id, :quantity, :status)");
+                                         VALUES (:product_id, :quantity, :status)");
                 $stmt->execute([
                     ':product_id' => $productId,
                     ':quantity' => $input['quantity'],
                     ':status' => $input['status']
                 ]);
 
-                $stmt = $pdo->prepare("INSERT INTO product_transactions (product_id, quantity, previous_status, new_status, user_id, organization_id)
-                                       VALUES (:product_id, :quantity, 'new', :status, :user_id, :organization_id)");
-                $stmt->execute([
-                    ':product_id' => $productId,
-                    ':quantity' => $input['quantity'],
-                    ':status' => $input['status'],
-                    ':user_id' => $loggedInUserId,
-                    ':organization_id' => $organizationId
-                ]);
-                
-                recordActivity($pdo, $loggedInUserId, 'product_add', "Added product '{$input['name']}' (ID: $productId)", $organizationId);
                 $pdo->commit();
                 http_response_code(201);
                 echo json_encode(['message' => 'Product added successfully', 'product_id' => $productId]);
@@ -597,19 +662,25 @@ try {
                     ':product_id' => $input['product_id']
                 ]);
 
-                $stmt = $pdo->prepare("
-                    INSERT INTO product_transactions
-                      (product_id, quantity, previous_status, new_status, user_id, comment, Sold_Price, payment_method, organization_id)
-                    VALUES
-                      (:product_id, :quantity, :previous_status, :new_status, :user_id, :comment, :sold_price, :payment_method, :organization_id)
-                ");
+                $stmt = $pdo->prepare(" 
+    INSERT INTO product_transactions 
+      (product_id, quantity, previous_status, new_status, user_id, comment, Sold_Price, payment_method, organization_id, bank_name, unpaid_amount) 
+    VALUES 
+      (:product_id, :quantity, :previous_status, :new_status, :user_id, :comment, :sold_price, :payment_method, :organization_id, :bank_name, :unpaid_amount) 
+");
+
+    $bankName = $input['bank_name'] ?? '';
+    $unpaidAmount = $input['unpaid_amount'] ?? 0;
+    $toWhom = $input['to_whom'] ?? '';
                 $stmt->execute([
                     ':product_id'     => $input['product_id'],
                     ':quantity'       => $input['quantity_sold'],
                     ':previous_status'=> 'in_store',
                     ':new_status'     => $newStatus,
                     ':user_id'        => $loggedInUserId,
-                    ':comment'        => $input['comment'] ?? '',
+                    ':comment' => ($input['payment_method'] === 'credit') ? $toWhom : ($input['comment'] ?? ''),
+        ':bank_name' => $bankName,
+        ':unpaid_amount' => $unpaidAmount,
                     ':sold_price'     => $input['sold_price'],
                     ':payment_method' => $input['payment_method'],
                     ':organization_id'=> $organizationId
@@ -626,7 +697,7 @@ try {
             }
             break;
 
-       case 'get_reports':
+      case 'get_reports':
     try {
         $dateField = 'transaction_date';
         $now       = date('Y-m-d H:i:s');
@@ -736,11 +807,11 @@ try {
                 GROUP BY payment_method
                 ORDER BY payment_method ASC
             ";
-            $labels      = [];
-            $week        = (int)date('W', strtotime($start));
-            $year        = (int)date('o', strtotime($start));
-            $currentWeek = (int)date('W');
-            $currentYear = (int)date('o');
+            $labels        = [];
+            $week          = (int)date('W', strtotime($start));
+            $year          = (int)date('o', strtotime($start));
+            $currentWeek   = (int)date('W');
+            $currentYear   = (int)date('o');
             while ($year < $currentYear || ($year == $currentYear && $week <= $currentWeek)) {
                 $labels[] = sprintf('%d%02d', $year, $week);
                 $week++;
@@ -915,12 +986,13 @@ try {
         $prodTxQuery = "
             SELECT
               pt.id,
-              p.id        AS product_id,
-              p.name      AS product_name,
-              pt.quantity AS quantity_sold,
+              p.id          AS product_id,
+              p.name        AS product_name,
+              pt.quantity   AS quantity_sold,
               pt.Sold_Price,
               pt.payment_method,
-              pt.transaction_date
+              DATE_ADD(pt.transaction_date, INTERVAL 1 HOUR) AS transaction_date,
+              HOUR(DATE_ADD(pt.transaction_date, INTERVAL 1 HOUR)) AS transaction_hour
             FROM product_transactions pt
             JOIN products p ON pt.product_id = p.id
             WHERE pt.organization_id = :orgId
@@ -943,7 +1015,8 @@ try {
               s.id,
               s.amount,
               s.reason AS description,
-              s.transaction_date
+              DATE_ADD(s.transaction_date, INTERVAL 1 HOUR) AS transaction_date,
+              HOUR(DATE_ADD(s.transaction_date, INTERVAL 1 HOUR)) AS transaction_hour
             FROM spendings s
             WHERE s.organization_id = :orgId
               AND s.transaction_date BETWEEN :start AND :end
@@ -986,8 +1059,8 @@ try {
             ],
             'lowStock'            => $lowStockRows,       // [{id, name, quantity}, …]
             'trendingProducts'    => $trendingRows,       // [{id, name, sold_qty}, …]
-            'productTransactions' => $productRows,        // [{…product tx…}, …]
-            'spendingTransactions'=> $spendingRows        // [{…spending tx…}, …]
+            'productTransactions' => $productRows,         // [{…product tx…}, …]
+            'spendingTransactions'=> $spendingRows         // [{…spending tx…}, …]
         ];
         http_response_code(200);
         echo json_encode($response);
@@ -1109,6 +1182,372 @@ try {
             http_response_code(201);
             echo json_encode(['message' => 'User registered successfully']);
             break;
+
+case 'create_worker':
+            // validate
+            if (empty($input['name'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Worker name is required.'
+                ]);
+                exit;
+            }
+
+            // insert
+            $stmt = $pdo->prepare("
+                INSERT INTO workers (organization_id, name, paid_commission, unpaid_commission)
+                VALUES (:org, :name, 0, 0)
+            ");
+            $stmt->execute([
+                ':org'  => $organizationId,
+                ':name' => trim($input['name'])
+            ]);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Worker created successfully.'
+            ]);
+            break;
+
+case 'get_vehicles':
+    $stmt = $pdo->prepare("SELECT id, name, tariff FROM vehicles WHERE organization_id = :org");
+    $stmt->execute([':org' => $organizationId]);
+    $vehicles = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['success' => true, 'vehicles' => $vehicles]);
+    break;
+
+case 'create_vehicle':
+    if (empty($input['name']) || !isset($input['tariff'])) {
+        http_response_code(400);
+        echo json_encode(['success'=>false,'message'=>'Name and tariff required.']);
+        exit;
+    }
+    $stmt = $pdo->prepare("
+      INSERT INTO vehicles (organization_id, name, tariff, partial_tariff)
+      VALUES (:org, :name, :tariff, :partial_tariff)
+    ");
+    $stmt->execute([
+      ':org'    => $organizationId,
+      ':name'   => trim($input['name']),
+      ':tariff' => floatval($input['tariff']),
+      ':partial_tariff' => floatval($input['partial_tariff'] ?? 0)
+    ]);
+    echo json_encode(['success'=>true,'message'=>'Vehicle added.']);
+    break;
+
+case 'update_vehicle':
+    if (empty($input['id']) || empty($input['name']) || !isset($input['tariff'])) {
+        http_response_code(400);
+        echo json_encode(['success'=>false,'message'=>'ID, name and tariff required.']);
+        exit;
+    }
+    $stmt = $pdo->prepare("
+      UPDATE vehicles
+      SET name = :name, tariff = :tariff, partial_tariff = :partial_tariff
+      WHERE id = :id AND organization_id = :org
+    ");
+    $stmt->execute([
+      ':id'     => intval($input['id']),
+      ':org'    => $organizationId,
+      ':name'   => trim($input['name']),
+      ':tariff' => floatval($input['tariff']),
+      ':partial_tariff' => floatval($input['partial_tariff'] ?? 0)
+    ]);
+    echo json_encode(['success'=>true,'message'=>'Vehicle updated.']);
+    break;
+
+
+
+
+
+case 'get_unpaid_workers':
+        $stmt = $pdo->prepare("
+          SELECT id, name, unpaid_commission 
+            FROM workers 
+           WHERE organization_id = :org 
+             AND unpaid_commission >= 0
+        ");
+        $stmt->execute([':org'=>$organizationId]);
+        echo json_encode(['success'=>true,'workers'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        break;
+
+    // 2) List vehicles (includes full and partial tariffs)
+    case 'get_vehicless':
+        $stmt = $pdo->prepare("
+          SELECT id, name, tariff, partial_tariff 
+            FROM vehicles 
+           WHERE organization_id = :org
+        ");
+        $stmt->execute([':org'=>$organizationId]);
+        echo json_encode(['success'=>true,'vehicles'=>$stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        break;
+
+    // 3) Record a carwash transaction
+    case 'create_carwash_transaction':
+        if (empty($input['worker_ids']) || !is_array($input['worker_ids']) || 
+            empty($input['vehicle_id']) || !isset($input['wash_type']) || 
+            empty($input['payment_method'])) {
+            
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'All fields required.']);
+            exit;
+        }
+    
+        $workerIds = $input['worker_ids'];
+        $vehicleId = intval($input['vehicle_id']);
+        $washType = $input['wash_type'];
+        $paymentMethod = trim($input['payment_method']);
+        $numWorkers = count($workerIds);
+    
+        // Fetch vehicle tariff
+        $stmt = $pdo->prepare("SELECT tariff, partial_tariff FROM vehicles 
+                              WHERE id = :vid AND organization_id = :org");
+        $stmt->execute([':vid' => $vehicleId, ':org' => $organizationId]);
+        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+        if (!$vehicle) {
+            http_response_code(404);
+            echo json_encode(['success' => false, 'message' => 'Vehicle not found.']);
+            exit;
+        }
+    
+        $tariff = ($washType === 'partial') ? $vehicle['partial_tariff'] : $vehicle['tariff'];
+        $totalCommission = $tariff * 0.35;
+        $commissionPerWorker = $totalCommission / $numWorkers;
+    
+        // In auth.php, inside case 'create_carwash_transaction':
+
+// ... (code before the transaction block) ...
+
+$pdo->beginTransaction();
+
+try {
+    // Encode the worker IDs array into a JSON string to store in the database
+    $workerIdsJson = json_encode($workerIds);
+
+    // Create transaction record - THIS BLOCK IS MODIFIED
+    $stmt = $pdo->prepare("INSERT INTO carwash_transactions
+                          (organization_id, user_id, vehicle_id, tariff, commission_amount,
+                          transaction_date, payment_method, worker_id, worker_ids)
+                          VALUES (:org, :uid, :vid, :tariff, :commission, NOW(), :pm, :main_worker_id, :all_worker_ids)");
+    $stmt->execute([
+        ':org' => $organizationId,
+        ':uid' => $loggedInUserId,
+        ':vid' => $vehicleId,
+        ':tariff' => $tariff,
+        ':commission' => $totalCommission,
+        ':pm' => $paymentMethod,
+        ':main_worker_id' => $workerIds[0], // Use the first selected worker for the NOT NULL column
+        ':all_worker_ids' => $workerIdsJson  // Save the complete array as JSON
+    ]);
+
+    // Update each worker's commission (this part is correct)
+    foreach ($workerIds as $workerId) {
+        $stmt = $pdo->prepare("UPDATE workers
+                              SET unpaid_commission = unpaid_commission + :commission
+                              WHERE id = :wid AND organization_id = :org");
+        $stmt->execute([
+            ':commission' => $commissionPerWorker,
+            ':wid' => $workerId,
+            ':org' => $organizationId
+        ]);
+    }
+
+    $pdo->commit();
+    echo json_encode(['success' => true, 'message' => 'Transaction recorded.']);
+} catch (Exception $e) {
+    $pdo->rollBack();
+    http_response_code(500);
+    // Add the specific error message for easier debugging
+    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+}
+break;
+
+    // 4) Pay out a worker’s unpaid commission
+    case 'pay_commission':
+        if (empty($input['worker_id'])) {
+            http_response_code(400);
+            echo json_encode(['success'=>false,'message'=>'Worker ID required.']);
+            exit;
+        }
+        $w = intval($input['worker_id']);
+        // fetch unpaid amount
+        $stmt = $pdo->prepare("
+          SELECT unpaid_commission 
+            FROM workers 
+           WHERE id = :wid AND organization_id = :org
+        ");
+        $stmt->execute([':wid'=>$w,':org'=>$organizationId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row || $row['unpaid_commission'] <= 0) {
+            echo json_encode(['success'=>false,'message'=>'Nothing to pay.']);
+            exit;
+        }
+        $amt = $row['unpaid_commission'];
+        $pdo->beginTransaction();
+        // zero unpaid, add to paid
+        $upd = $pdo->prepare("
+          UPDATE workers
+             SET paid_commission   = paid_commission + :amt,
+                 unpaid_commission = 0
+           WHERE id = :wid AND organization_id = :org
+        ");
+        $upd->execute([':amt'=>$amt,':wid'=>$w,':org'=>$organizationId]);
+        // record in paid_commissions
+        $ins = $pdo->prepare("
+          INSERT INTO paid_commissions
+            (organization_id,worker_id,amount,paid_at)
+          VALUES
+            (:org,:wid,:amt,NOW())
+        ");
+        $ins->execute([':org'=>$organizationId,':wid'=>$w,':amt'=>$amt]);
+        $pdo->commit();
+
+        echo json_encode(['success'=>true,'message'=>'Commission paid.']);
+        break;
+
+
+
+
+case 'get_commission_summary':
+    $filter = $_GET['filter'] ?? $input['filter'] ?? 'daily';
+    // decide date window
+    if ($filter === 'weekly') {
+        $start = "DATE_SUB(CURDATE(), INTERVAL 6 DAY)";          // 7-day window
+        $end   = "NOW()";
+        $between = " BETWEEN $start AND $end";
+    } elseif ($filter === 'monthly') {
+        $start = "CONCAT(DATE_FORMAT(CURDATE(), '%Y-%m'), '-01 00:00:00')";
+        $end   = "NOW()";
+        $between = " BETWEEN $start AND $end";
+    } else {
+        // daily: use passed start/end
+        $start = $input['start'] ?? $_GET['start'];
+        $end   = $input['end']   ?? $_GET['end'];
+        $between = " BETWEEN :start AND :end";
+    }
+
+    // summary of workers
+    $w = $pdo->prepare("
+      SELECT
+        COALESCE(SUM(unpaid_commission),0) AS total_unpaid,
+        COALESCE(SUM(paid_commission),0)   AS total_paid
+      FROM workers
+     WHERE organization_id = :org
+    ");
+    $w->execute([':org'=>$organizationId]);
+    $resW = $w->fetch(PDO::FETCH_ASSOC);
+
+    // tariff sum in carwash_transactions
+    $t = $pdo->prepare("
+      SELECT COALESCE(SUM(tariff),0) AS tariff_sum
+        FROM carwash_transactions
+       WHERE organization_id = :org
+         AND transaction_date $between
+    ");
+    // bind parameters only for daily
+    if ($filter === 'daily') {
+      $t->execute([':org'=>$organizationId, ':start'=>$start, ':end'=>$end]);
+    } else {
+      $t->execute([':org'=>$organizationId]);
+    }
+    $resT = $t->fetch(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+      'success'     => true,
+      'total_unpaid'=> $resW['total_unpaid'],
+      'total_paid'  => $resW['total_paid'],
+      'tariff_sum'  => $resT['tariff_sum']
+    ]);
+    break;
+
+case 'get_carwash_transactions':
+    $filter = $_GET['filter'] ?? 'daily';
+    // same date logic…
+    if ($filter==='weekly') {
+      $whereDate = "cw.transaction_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND NOW()";
+    } elseif ($filter==='monthly') {
+      $whereDate = "cw.transaction_date BETWEEN CONCAT(DATE_FORMAT(CURDATE(), '%Y-%m'), '-01 00:00:00') AND NOW()";
+    } else {
+      $whereDate = "cw.transaction_date BETWEEN :start AND :end";
+    }
+    $sql = "
+      SELECT cw.id, w.name AS worker_name, v.name AS vehicle_name,
+             cw.tariff, cw.commission_amount, cw.transaction_date, cw.payment_method
+        FROM carwash_transactions cw
+        JOIN workers w ON cw.worker_id = w.id
+        JOIN vehicles v ON cw.vehicle_id = v.id
+       WHERE cw.organization_id = :org
+         AND $whereDate
+       ORDER BY cw.transaction_date DESC
+    ";
+    $q = $pdo->prepare($sql);
+    if ($filter==='daily') {
+      $q->execute([':org'=>$organizationId, ':start'=>$_GET['start'], ':end'=>$_GET['end']]);
+    } else {
+      $q->execute([':org'=>$organizationId]);
+    }
+    echo json_encode(['success'=>true,'transactions'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
+    break;
+
+case 'get_paid_commissions':
+    $filter = $_GET['filter'] ?? 'daily';
+    if ($filter==='weekly') {
+      $whereDate = "pc.paid_at BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND NOW()";
+    } elseif ($filter==='monthly') {
+      $whereDate = "pc.paid_at BETWEEN CONCAT(DATE_FORMAT(CURDATE(), '%Y-%m'), '-01 00:00:00') AND NOW()";
+    } else {
+      $whereDate = "pc.paid_at BETWEEN :start AND :end";
+    }
+    $sql = "
+      SELECT pc.id, w.name AS worker_name, pc.amount, pc.paid_at
+        FROM paid_commissions pc
+        JOIN workers w ON pc.worker_id = w.id
+       WHERE pc.organization_id = :org
+         AND $whereDate
+       ORDER BY pc.paid_at DESC
+    ";
+    $q = $pdo->prepare($sql);
+    if ($filter==='daily') {
+      $q->execute([':org'=>$organizationId, ':start'=>$_GET['start'], ':end'=>$_GET['end']]);
+    } else {
+      $q->execute([':org'=>$organizationId]);
+    }
+    echo json_encode(['success'=>true,'commissions'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
+    break;
+
+case 'get_carwash_spendings':
+    $filter = $_GET['filter'] ?? 'daily';
+    if ($filter==='weekly') {
+      $whereDate = "cs.transaction_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 6 DAY) AND NOW()";
+    } elseif ($filter==='monthly') {
+      $whereDate = "cs.transaction_date BETWEEN CONCAT(DATE_FORMAT(CURDATE(), '%Y-%m'), '-01 00:00:00') AND NOW()";
+    } else {
+      $whereDate = "cs.transaction_date BETWEEN :start AND :end";
+    }
+    $sql = "
+      SELECT cs.id,
+             w.name       AS worker_name,
+             cs.amount,
+             cs.category,
+             cs.reason,
+             cs.transaction_date
+        FROM car_spendings cs
+        JOIN workers w ON cs.user_id = w.id
+       WHERE cs.organization_id = :org
+         AND $whereDate
+       ORDER BY cs.transaction_date DESC
+    ";
+    $q = $pdo->prepare($sql);
+    if ($filter==='daily') {
+      $q->execute([':org'=>$organizationId, ':start'=>$_GET['start'], ':end'=>$_GET['end']]);
+    } else {
+      $q->execute([':org'=>$organizationId]);
+    }
+    echo json_encode(['success'=>true,'spendings'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
+    break;
+
 
 
 

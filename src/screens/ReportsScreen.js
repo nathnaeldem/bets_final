@@ -18,25 +18,22 @@ import axiosRetry from 'axios-retry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
-const API_URL = 'https://googsites.pro.et/auth.php';
+const API_URL = 'https://dankula.x10.mx/auth.php';
 const screenWidth = Dimensions.get('window').width;
 
 const reportsApi = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
 axiosRetry(reportsApi, {
   retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000,
+  retryDelay: (count) => count * 1000,
   retryCondition: (error) =>
     axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error),
-  onRetry: (retryCount, error, requestConfig) => {
-    console.log(`Reports API retry attempt ${retryCount} for ${requestConfig.url}: ${error.message}`);
-  },
+  onRetry: (count, error, cfg) =>
+    console.log(`Retry ${count} for ${cfg.url}: ${error.message}`),
 });
 
 const ReportsScreen = () => {
@@ -51,39 +48,61 @@ const ReportsScreen = () => {
   const [error, setError] = useState(null);
 
   const aggregateChartData = useCallback((rawData, filterType) => {
-    if (!rawData || !Array.isArray(rawData.labels) || !Array.isArray(rawData.datasets?.[0]?.data)) {
+    if (
+      !rawData ||
+      !Array.isArray(rawData.labels) ||
+      !Array.isArray(rawData.datasets?.[0]?.data)
+    ) {
       return rawData;
     }
     const labels = rawData.labels;
     const data = rawData.datasets[0].data;
-    let newLabels = [];
-    let newData = [];
+    const newLabels = [];
+    const newData = [];
 
     if (filterType === 'daily') {
+      // group every 4 points into one bar
       for (let i = 0; i < labels.length; i += 4) {
         const startIdx = i;
         const endIdx = Math.min(i + 3, labels.length - 1);
-        newLabels.push(`${labels[startIdx]}-${labels[endIdx]}`);
-        const sumVal = data.slice(startIdx, endIdx + 1).reduce((acc, v) => acc + v, 0);
+        const startLabel = String(labels[startIdx] ?? '');
+        const endLabel = String(labels[endIdx] ?? '');
+        newLabels.push(`${startLabel}–${endLabel}`);
+        const sumVal = data
+          .slice(startIdx, endIdx + 1)
+          .reduce((acc, v) => acc + (Number(v) || 0), 0);
         newData.push(sumVal);
       }
+    } else if (filterType === 'weekly') {
+      // assume raw labels are full dates → show day names
+      labels.forEach((lbl, idx) => {
+        const s = String(lbl ?? '');
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+          newLabels.push(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]);
+        } else {
+          newLabels.push(s.slice(0,3));
+        }
+        newData.push(Number(data[idx]) || 0);
+      });
     } else if (filterType === 'monthly') {
+      // chop into 5 roughly-even chunks
       const chunkSize = Math.ceil(labels.length / 5);
       for (let i = 0; i < labels.length; i += chunkSize) {
-        const weekIndex = Math.floor(i / chunkSize) + 1;
-        newLabels.push(`Wk ${weekIndex}`);
+        const week = Math.floor(i / chunkSize) + 1;
+        newLabels.push(`Wk ${week}`);
         const endIdx = Math.min(i + chunkSize - 1, labels.length - 1);
-        const sumVal = data.slice(i, endIdx + 1).reduce((acc, v) => acc + v, 0);
+        const sumVal = data
+          .slice(i, endIdx + 1)
+          .reduce((acc, v) => acc + (Number(v) || 0), 0);
         newData.push(sumVal);
       }
     } else {
+      // unknown filter: pass raw through
       return rawData;
     }
 
-    return {
-      labels: newLabels,
-      datasets: [{ data: newData }],
-    };
+    return { labels: newLabels, datasets: [{ data: newData }] };
   }, []);
 
   const fetchReportData = useCallback(async () => {
@@ -99,23 +118,22 @@ const ReportsScreen = () => {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
-      const response = await reportsApi.get('', {
+      const { data } = await reportsApi.get('', {
         params: { action: 'get_reports', filter: timeFilter },
       });
 
       if (
-        response.data?.chartData &&
-        response.data?.totals &&
-        response.data?.paymentData &&
-        response.data?.lowStock &&
-        response.data?.trendingProducts
+        data.chartData &&
+        data.totals &&
+        data.paymentData &&
+        data.lowStock &&
+        data.trendingProducts
       ) {
-        const aggregated = aggregateChartData(response.data.chartData, timeFilter);
-        setChartData(aggregated);
-        setTotals(response.data.totals);
-        setPaymentData(response.data.paymentData);
-        setLowStock(response.data.lowStock);
-        setTrending(response.data.trendingProducts);
+        setChartData(aggregateChartData(data.chartData, timeFilter));
+        setTotals(data.totals);
+        setPaymentData(data.paymentData);
+        setLowStock(data.lowStock);
+        setTrending(data.trendingProducts);
       } else {
         throw new Error('Received invalid data format from server.');
       }
@@ -125,9 +143,7 @@ const ReportsScreen = () => {
       if (axios.isAxiosError(err)) {
         if (err.response) {
           msg = err.response.data?.message || `Server Error: ${err.response.status}`;
-          if (err.response.status === 401) {
-            msg = 'Session expired. Please log in again.';
-          }
+          if (err.response.status === 401) msg = 'Session expired. Please log in again.';
         } else if (err.request) {
           msg = 'Network error: No response from server.';
         } else {
@@ -155,14 +171,10 @@ const ReportsScreen = () => {
     </TouchableOpacity>
   );
 
-  const pieColors = {
-    cash: '#2ecc71',
-    credit: '#3498db',
-    account_transfer: '#f1c40f',
-  };
+  const pieColors = { cash: '#2ecc71', credit: '#3498db', account_transfer: '#f1c40f' };
   const pieChartData = paymentData.labels.map((method, idx) => ({
     name: method.charAt(0).toUpperCase() + method.slice(1),
-    population: paymentData.datasets[0].data[idx],
+    population: Number(paymentData.datasets[0].data[idx]) || 0,
     color: pieColors[method] || '#bdc3c7',
     legendFontColor: '#333333',
     legendFontSize: 12,
@@ -171,12 +183,7 @@ const ReportsScreen = () => {
   const renderLowStockItem = ({ item }) => (
     <View style={styles.listItem}>
       <Text style={styles.listItemText}>{item.name}</Text>
-      <Text
-        style={[
-          styles.listItemQty,
-          { color: item.quantity === 0 ? '#e74c3c' : '#e67e22' },
-        ]}
-      >
+      <Text style={[styles.listItemQty, { color: item.quantity === 0 ? '#e74c3c' : '#e67e22' }]}>
         {item.quantity} left
       </Text>
     </View>
@@ -195,7 +202,6 @@ const ReportsScreen = () => {
       </View>
     );
   }
-
   if (error) {
     return (
       <View style={styles.centeredContainer}>
@@ -209,7 +215,6 @@ const ReportsScreen = () => {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.screenTitle}>Reports</Text>
-
       <View style={styles.filterContainer}>
         {renderFilterButton('daily', 'Daily')}
         {renderFilterButton('weekly', 'Weekly')}
@@ -227,8 +232,8 @@ const ReportsScreen = () => {
           yAxisLabel="$"
           chartConfig={chartConfig}
           verticalLabelRotation={-45}
-          fromZero={true}
-          showValuesOnTopOfBars={true}
+          fromZero
+          showValuesOnTopOfBars
           withInnerLines={false}
         />
       </View>
@@ -246,11 +251,11 @@ const ReportsScreen = () => {
           absolute={false}
           chartConfig={pieChartConfig}
           center={[0, 0]}
-          hasLegend={true}
+          hasLegend
         />
       </View>
 
-      {/* Button to Detailed Reports */}
+      {/* Detailed Reports Button */}
       <View style={styles.detailButtonContainer}>
         <Button
           title="View Detailed Reports"
@@ -260,7 +265,7 @@ const ReportsScreen = () => {
         />
       </View>
 
-      {/* Low Inventory Section */}
+      {/* Low Inventory */}
       <View style={styles.listSection}>
         <Text style={styles.listSectionTitle}>Low Inventory (≤ 5 units)</Text>
         {lowStock.length === 0 ? (
@@ -275,7 +280,7 @@ const ReportsScreen = () => {
         )}
       </View>
 
-      {/* Trending Products Section */}
+      {/* Trending Products */}
       <View style={styles.listSection}>
         <Text style={styles.listSectionTitle}>Trending Products ({timeFilter})</Text>
         {trending.length === 0 ? (
@@ -290,20 +295,20 @@ const ReportsScreen = () => {
         )}
       </View>
 
-      {/* Summary Cards */}
+      {/* Totals */}
       <View style={styles.summaryContainer}>
         <View style={styles.card}>
           <Icon name="trending-up" type="material" color="#2ecc71" size={24} />
           <Text style={styles.cardTitle}>Total Sales</Text>
           <Text style={[styles.amount, { color: '#2ecc71' }]}>
-            ${totals.sales.toFixed(2)}
+            ETB{totals.sales.toFixed(2)}
           </Text>
         </View>
         <View style={styles.card}>
           <Icon name="trending-down" type="material" color="#e74c3c" size={24} />
           <Text style={styles.cardTitle}>Total Spendings</Text>
           <Text style={[styles.amount, { color: '#e74c3c' }]}>
-            ${totals.spendings.toFixed(2)}
+            ETB{totals.spendings.toFixed(2)}
           </Text>
         </View>
       </View>
@@ -320,17 +325,10 @@ const chartConfig = {
   fillShadowGradient: '#007bff',
   fillShadowGradientOpacity: 1,
   labelColor: () => `rgba(33, 37, 41, 1)`,
-  style: {
-    borderRadius: 16,
-  },
-  propsForBackgroundLines: {
-    stroke: '#e9ecef',
-  },
+  style: { borderRadius: 16 },
+  propsForBackgroundLines: { stroke: '#e9ecef' },
   barPercentage: 0.6,
-  propsForLabels: {
-    fontSize: '12',
-    fontWeight: '600',
-  },
+  propsForLabels: { fontSize: '12', fontWeight: '600' },
 };
 
 const pieChartConfig = {
@@ -339,29 +337,13 @@ const pieChartConfig = {
   backgroundGradientTo: '#ffffff',
   color: () => `rgba(0, 0, 0, 1)`,
   labelColor: () => `rgba(0, 0, 0, 1)`,
-  style: {
-    borderRadius: 16,
-  },
+  style: { borderRadius: 16 },
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flexGrow: 1,
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-  },
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  screenTitle: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#2d3436',
-    marginBottom: 16,
-  },
+  container: { flexGrow: 1, padding: 16, backgroundColor: '#f8f9fa' },
+  centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  screenTitle: { fontSize: 26, fontWeight: 'bold', color: '#2d3436', marginBottom: 16 },
   filterContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -370,15 +352,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    textAlign: 'center',
-    color: '#6c757d',
-    fontWeight: '600',
-    fontSize: 15,
-  },
+  filterButton: { flex: 1, paddingVertical: 12, borderRadius: 8, textAlign: 'center', color: '#6c757d', fontWeight: '600', fontSize: 15 },
   activeFilter: {
     backgroundColor: '#007bff',
     color: 'white',
@@ -414,23 +388,9 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 24,
   },
-  detailButtonContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  detailButton: {
-    backgroundColor: '#6c5ce7',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  chartTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#343a40',
-    textTransform: 'capitalize',
-  },
+  detailButtonContainer: { alignItems: 'center', marginBottom: 24 },
+  detailButton: { backgroundColor: '#6c5ce7', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
+  chartTitle: { fontSize: 18, fontWeight: '600', marginBottom: 10, color: '#343a40', textTransform: 'capitalize' },
   listSection: {
     backgroundColor: 'white',
     borderRadius: 12,
@@ -442,74 +402,17 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
-  listSectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 12,
-    color: '#2d3436',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#6c757d',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  listItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  listItemText: {
-    fontSize: 15,
-    color: '#343a40',
-  },
-  listItemQty: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  summaryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-    marginBottom: 24,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  cardTitle: {
-    fontSize: 16,
-    color: '#6c757d',
-    fontWeight: '500',
-    marginTop: 8,
-  },
-  amount: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 16,
-    marginVertical: 20,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 12,
-    paddingHorizontal: 30,
-    paddingVertical: 10,
-  },
+  listSectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: 12, color: '#2d3436' },
+  emptyText: { fontSize: 14, color: '#6c757d', textAlign: 'center', marginTop: 8 },
+  listItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
+  listItemText: { fontSize: 15, color: '#343a40' },
+  listItemQty: { fontSize: 15, fontWeight: '600' },
+  summaryContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, marginBottom: 24 },
+  card: { flex: 1, backgroundColor: 'white', borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  cardTitle: { fontSize: 16, color: '#6c757d', fontWeight: '500', marginTop: 8 },
+  amount: { fontSize: 22, fontWeight: '700', marginTop: 4 },
+  errorText: { color: '#e74c3c', fontSize: 16, marginVertical: 20, textAlign: 'center' },
+  retryButton: { backgroundColor: '#007bff', borderRadius: 12, paddingHorizontal: 30, paddingVertical: 10 },
 });
 
 export default ReportsScreen;

@@ -1,3 +1,4 @@
+// HomeScreen.js
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Text, Button } from 'react-native-elements';
@@ -37,7 +38,7 @@ const HomeScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.infoText}>Shop Management Portal</Text>
+        <Text style={styles.infoText}>Betselot Centeral</Text>
 
         <View style={styles.buttonGroup}>
           {user?.role === 'admin' ? (
@@ -50,11 +51,18 @@ const HomeScreen = ({ navigation }) => {
                 onPress={() => navigation.navigate('ProductList')}
               />
               <Button
-                title="Sales Dashboard"
+                title="New Sale"
                 buttonStyle={styles.secondaryButton}
                 titleStyle={styles.buttonTitle}
-                icon={<MaterialIcons name="analytics" size={22} color="white" style={styles.icon} />}
+                icon={<MaterialIcons name="attach-money" size={22} color="white" style={styles.icon} />}
                 onPress={() => navigation.navigate('Sales')}
+              />
+              <Button
+                title="Record Spending"
+                buttonStyle={styles.tertiaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('Spending')}
               />
               <Button
                 title="Analytics & Reports"
@@ -62,6 +70,35 @@ const HomeScreen = ({ navigation }) => {
                 titleStyle={styles.buttonTitle}
                 icon={<MaterialIcons name="insert-chart" size={22} color="white" style={styles.icon} />}
                 onPress={() => navigation.navigate('Reports')}
+              />
+              <Text style={{textAlign: 'center',fontSize: 18,fontWeight:'bold'}}>ላቭያጆ</Text>
+              <Button
+                title="Vehicle Management"
+                buttonStyle={styles.vehicleButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="directions-car" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('AdminVehicleManagement')}
+              />
+              <Button
+                title="Car wash"
+                buttonStyle={styles.carWashButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="local-car-wash" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('CarWashScreen')}
+              />
+              <Button
+                title="Record Car Wash Spending"
+                buttonStyle={styles.tertiaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('CarWashSpendingScreen')}
+              />
+              <Button
+                title="Commission Report"
+                buttonStyle={styles.commissionButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="leaderboard" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('CommissionReportScreen')}
               />
               {/* Admin-only: User Management */}
               <Button
@@ -72,7 +109,51 @@ const HomeScreen = ({ navigation }) => {
                 onPress={() => navigation.navigate('AdminUserManagement')}
               />
             </>
+          ) : user?.role === 'worker' ? (
+            // Worker specific buttons
+            <>
+              <Button
+                title="Car wash"
+                buttonStyle={styles.carWashButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="local-car-wash" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('CarWashScreen')}
+              />
+              <Button
+                title="Record Car Wash Spending"
+                buttonStyle={styles.tertiaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('CarWashSpendingScreen')}
+              />
+            </>
+          ) : user?.role === 'user' ? (
+             // User role: No access to Car Wash or other admin/worker features
+             <>
+              <Button
+                title="Browse Products"
+                buttonStyle={styles.primaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="storefront" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('ProductList')}
+              />
+              <Button
+                title="New Sale"
+                buttonStyle={styles.secondaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="attach-money" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('Sales')}
+              />
+              <Button
+                title="Record Spending"
+                buttonStyle={styles.tertiaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('Spending')}
+              />
+            </>
           ) : (
+            // Default buttons for other roles (e.g., normal users if any)
             <>
               <Button
                 title="Browse Products"
@@ -88,15 +169,15 @@ const HomeScreen = ({ navigation }) => {
                 icon={<MaterialIcons name="attach-money" size={22} color="white" style={styles.icon} />}
                 onPress={() => navigation.navigate('Sales')}
               />
+              <Button
+                title="Record Spending"
+                buttonStyle={styles.tertiaryButton}
+                titleStyle={styles.buttonTitle}
+                icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                onPress={() => navigation.navigate('Spending')}
+              />
             </>
           )}
-          <Button
-            title="Record Spending"
-            buttonStyle={styles.tertiaryButton}
-            titleStyle={styles.buttonTitle}
-            icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
-            onPress={() => navigation.navigate('Spending')}
-          />
         </View>
       </View>
 
@@ -199,6 +280,24 @@ const styles = StyleSheet.create({
   },
   tertiaryButton: {
     backgroundColor: '#6c5ce7',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  vehicleButton: {
+    backgroundColor: '#2ecc71',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  carWashButton: {
+    backgroundColor: '#3498db',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  commissionButton: {
+    backgroundColor: '#f39c12',
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,

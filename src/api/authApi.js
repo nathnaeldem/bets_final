@@ -2,7 +2,7 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry'; // Import axios-retry
 
 // Replace with your actual API base URL
-const API_URL = 'https://googsites.pro.et/auth.php';
+const API_URL = 'https://dankula.x10.mx/auth.php';
 
 // Create axios instance with base URL
 const api = axios.create({

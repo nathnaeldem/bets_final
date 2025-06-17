@@ -6,7 +6,7 @@ import axios from 'axios';
 import axiosRetry from 'axios-retry'; // Import axios-retry
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'https://googsites.pro.et/auth.php'; // Define API URL
+const API_URL = 'https://dankula.x10.mx/auth.php'; // Define API URL
 
 // --- Configure an Axios instance for product editing operations ---
 const productEditApi = axios.create({

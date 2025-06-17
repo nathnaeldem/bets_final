@@ -1,0 +1,345 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ActivityIndicator, ScrollView
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
+
+const API = 'https://dankula.x10.mx/auth.php';
+const api = axios.create({ baseURL: API, headers:{ 'Content-Type':'application/json' }, timeout:15000 });
+axiosRetry(api, { retries:2, retryDelay:axiosRetry.exponentialDelay });
+
+export default function CarwashTransactionManagement() {
+  const [workers, setWorkers]     = useState([]);
+  const [vehicles, setVehicles]   = useState([]);
+  const [form, setForm] = useState({
+    worker_ids: [], // Changed to array
+    vehicle_id: null,
+    wash_type: 'full',
+    payment_method: null,
+  });
+  const [loading, setLoading]     = useState(false);
+
+  // Predefined payment methods
+  const paymentMethods = ['Cash', 'Institution', 'Bank'];
+
+  const call = async (action, data = {}) => {
+    const token = await AsyncStorage.getItem('token');
+    const res = await api.post(`?action=${action}`, data, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return res.data;
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const wRes = await call('get_unpaid_workers');
+        if (!wRes.success) throw new Error(wRes.message || 'Failed to fetch workers');
+        setWorkers(wRes.workers);
+
+        const vRes = await call('get_vehicless');
+        if (!vRes.success) throw new Error(vRes.message || 'Failed to fetch vehicles');
+        setVehicles(vRes.vehicles);
+
+      } catch (e) {
+        Alert.alert('Error', e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleRecord = async () => {
+    const { worker_ids, vehicle_id, wash_type, payment_method } = form;
+    
+    // Check for at least one worker selected
+    if (!worker_ids.length || !vehicle_id || !payment_method) {
+      return Alert.alert('Error', 'All fields are required. Please select at least one worker, vehicle, wash type, and payment method.');
+    }
+    
+    // ... rest of function
+    setLoading(true);
+    try {
+      const res = await call('create_carwash_transaction', form);
+      if (!res.success) throw new Error(res.message);
+      Alert.alert('Success','Carwash transaction recorded successfully!');
+      setForm({ worker_ids: [], vehicle_id: null, wash_type: 'full', payment_method: null });      // reload data
+      const wRes = await call('get_unpaid_workers');
+      const vRes = await call('get_vehicless');
+      setWorkers(wRes.success ? wRes.workers : []);
+      setVehicles(vRes.success ? vRes.vehicles : []);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePay = async id => {
+    setLoading(true);
+    try {
+      const res = await call('pay_commission', { worker_id: id });
+      if (!res.success) throw new Error(res.message);
+      Alert.alert('Success','Commission paid successfully!');
+      const wRes = await call('get_unpaid_workers');
+      setWorkers(wRes.success ? wRes.workers : []);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      {loading && <ActivityIndicator size="large" color="#4CAF50" style={styles.loadingIndicator}/>}
+
+      <Text style={styles.sectionTitle}>Record New Wash</Text>
+
+      <Text style={styles.label}>Select Worker</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScrollContainer}>
+  {workers.map(item => (
+    <TouchableOpacity
+      key={String(item.id)}
+      style={[styles.choice, form.worker_ids.includes(item.id) && styles.choiceActive]}
+      onPress={() => {
+        setForm(f => {
+          const newIds = f.worker_ids.includes(item.id)
+            ? f.worker_ids.filter(id => id !== item.id)
+            : [...f.worker_ids, item.id];
+          return {...f, worker_ids: newIds};
+        });
+      }}
+    >
+      <Text style={[styles.choiceText, form.worker_ids.includes(item.id) && styles.choiceTextActive]}>
+        {item.name} ({item.unpaid_commission || '0.00'} ETB)
+      </Text>
+    </TouchableOpacity>
+  ))}
+</ScrollView>
+
+      <Text style={styles.label}>Select Vehicle</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScrollContainer}>
+        {vehicles.map(item => (
+          <TouchableOpacity
+            key={String(item.id)}
+            style={[styles.choice, form.vehicle_id === item.id && styles.choiceActive]}
+            onPress={() => setForm(f => ({ ...f, vehicle_id: item.id }))}
+          >
+            <Text style={[styles.choiceText, form.vehicle_id === item.id && styles.choiceTextActive]}>
+                {item.name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <Text style={styles.label}>Wash Type</Text>
+      <View style={styles.row}>
+        {['full','partial'].map(t => (
+          <TouchableOpacity
+            key={t}
+            style={[styles.choice, form.wash_type === t && styles.choiceActive]}
+            onPress={() => setForm(f => ({ ...f, wash_type: t }))}
+          >
+            <Text style={[styles.choiceText, form.wash_type === t && styles.choiceTextActive]}>{t}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.label}>Payment Method</Text>
+      <View style={styles.row}>
+        {paymentMethods.map(method => (
+          <TouchableOpacity
+            key={method}
+            style={[styles.choice, form.payment_method === method && styles.choiceActive]}
+            onPress={() => setForm(f => ({ ...f, payment_method: method }))}
+          >
+            <Text style={[styles.choiceText, form.payment_method === method && styles.choiceTextActive]}>
+              {method}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleRecord}
+        disabled={loading}
+      >
+        <Text style={styles.btnText}>Record Wash Transaction</Text>
+      </TouchableOpacity>
+
+      <View style={styles.separator} />
+
+      <Text style={styles.sectionTitle}>Unpaid Commissions</Text>
+      {workers.filter(w => parseFloat(w.unpaid_commission) > 0).length === 0 ? (
+        <Text style={styles.emptyListText}>No unpaid commissions at the moment.</Text>
+      ) : (
+        <View>
+          {workers.filter(w => parseFloat(w.unpaid_commission) > 0).map(item => (
+            <View key={String(item.id)} style={styles.payRow}>
+              <Text style={styles.payRowText}>
+                {item.name}: <Text style={styles.commissionAmount}>{parseFloat(item.unpaid_commission).toFixed(2)} ETB</Text>
+              </Text>
+              <TouchableOpacity onPress={() => handlePay(item.id)} style={styles.payButton}>
+                <Text style={styles.payButtonText}>Pay Now</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#F5F5F5', // Light gray background
+  },
+  loadingIndicator: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: '50%',
+    zIndex: 10,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginBottom: 20,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#555555',
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  horizontalScrollContainer: {
+    marginBottom: 10, // Add some bottom margin
+  },
+  choice: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0', // Lighter gray border
+    borderRadius: 8, // More rounded corners
+    marginRight: 10,
+    backgroundColor: '#FFFFFF', // White background for choices
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2, // Android shadow
+  },
+  choiceActive: {
+    borderColor: '#FFC107', // Amber for active
+    backgroundColor: '#FFF8E1', // Lighter amber background
+  },
+  choiceText: {
+    color: '#333333',
+    fontWeight: '500',
+  },
+  choiceTextActive: {
+    color: '#B77C00', // Darker amber text for active
+    fontWeight: 'bold',
+  },
+  row: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    flexWrap: 'wrap', // Allow choices to wrap to the next line
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+    backgroundColor: '#FFFFFF',
+    fontSize: 16,
+    color: '#333333',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  button: {
+    backgroundColor: '#4CAF50', // Green primary button
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  buttonDisabled: {
+    backgroundColor: '#A5D6A7', // Lighter green when disabled
+  },
+  btnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 18,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 30,
+  },
+  payRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  payRowText: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  commissionAmount: {
+    fontWeight: 'bold',
+    color: '#D32F2F', // Red for unpaid amounts
+  },
+  payButton: {
+    backgroundColor: '#2196F3', // Blue for pay action
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  payButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  emptyListText: {
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
+    color: '#777777',
+  }
+}); 

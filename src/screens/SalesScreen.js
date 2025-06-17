@@ -11,7 +11,7 @@ import {
   ScrollView,
   Platform,
 } from 'react-native';
-import { Text, Button, Card, Input, Icon } from 'react-native-elements';
+import { Text, Button, Card, Input, Icon, ButtonGroup } from 'react-native-elements'
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,9 +29,14 @@ axiosRetry(axios, {
   },
 });
 
-const API_URL = 'https://googsites.pro.et/auth.php';
+const API_URL = 'https://dankula.x10.mx/auth.php';
 
 const SalesScreen = ({ navigation }) => {
+  const [paymentIndex, setPaymentIndex] = useState(1);
+const [selectedBank, setSelectedBank] = useState('');
+const [toWhom, setToWhom] = useState('');
+const [unpaidAmount, setUnpaidAmount] = useState('');
+
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,6 +96,9 @@ const SalesScreen = ({ navigation }) => {
     setSoldPrice(product.selling_price.toString());
     setComment('');
     setPaymentMethod('credit');
+    setSelectedBank('');
+    setToWhom('');
+    setUnpaidAmount('');
   };
 
   const calculateTotalPrice = () => {
@@ -144,6 +152,9 @@ const SalesScreen = ({ navigation }) => {
         sold_price: price,
         payment_method: paymentMethod,
         comment: comment,
+        bank_name: selectedBank,
+        unpaid_amount: paymentMethod === 'credit' ? unpaidAmount : 0,
+        to_whom: paymentMethod === 'credit' ? toWhom : '',
       };
 
       const response = await axios.post(
@@ -444,70 +455,63 @@ const SalesScreen = ({ navigation }) => {
                 containerStyle={styles.inputField}
               />
 
-              {/* Payment Method */}
-              <View style={styles.paymentContainer}>
-                <Text style={styles.paymentLabel}>Payment Method:</Text>
-                <View style={styles.paymentButtons}>
-                  <Button
-                    title="Cash(ጥሬ ገንዘብ)"
-                    onPress={() => setPaymentMethod('cash')}
-                    buttonStyle={[
-                      styles.paymentButton,
-                      paymentMethod === 'cash' && styles.selectedPayment,
-                    ]}
-                    icon={
-                      <Icon
-                        name="money-bill-wave"
-                        type="font-awesome-5"
-                        color="#fff"
-                        containerStyle={{ marginRight: 6 }}
-                      />
-                    }
-                  />
-                  <Button
-                    title="Credit(ዱቤ)"
-                    onPress={() => setPaymentMethod('credit')}
-                    buttonStyle={[
-                      styles.paymentButton,
-                      paymentMethod === 'credit' && styles.selectedPayment,
-                    ]}
-                    icon={
-                      <Icon
-                        name="credit-card"
-                        type="font-awesome"
-                        color="#fff"
-                        containerStyle={{ marginRight: 6 }}
-                      />
-                    }
-                  />
-                  <Button
-                    title="Bank(አካውንት)"
-                    onPress={() => setPaymentMethod('account_transfer')}
-                    buttonStyle={[
-                      styles.paymentButton,
-                      paymentMethod === 'account_transfer' && styles.selectedPayment,
-                    ]}
-                    icon={
-                      <Icon
-                        name="exchange-alt"
-                        type="font-awesome-5"
-                        color="#fff"
-                        containerStyle={{ marginRight: 6 }}
-                      />
-                    }
-                  />
-                </View>
-              </View>
+             {/* Payment Method */}
+<View style={styles.paymentContainerCompact}>
+{paymentMethod === 'account_transfer' && (
+  <View style={styles.bankContainer}>
+    <Text style={styles.bankLabel}>Select Bank:</Text>
+    <View style={styles.bankButtons}>
+      {['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'].map((bank) => (
+        <Button
+          key={bank}
+          title={bank}
+          onPress={() => setSelectedBank(bank)}
+          buttonStyle={[
+            styles.bankButton,
+            selectedBank === bank && styles.selectedBankButton,
+          ]}
+        />
+      ))}
+    </View>
+  </View>
+)}
+
+{paymentMethod === 'credit' && (
+  <View>
+    <Input
+      label="Unpaid Amount"
+      placeholder="Enter amount"
+      value={unpaidAmount}
+      onChangeText={setUnpaidAmount}
+      keyboardType="numeric"
+    />
+    <Input
+      label="To Whom"
+      placeholder="Customer name"
+      value={toWhom}
+      onChangeText={setToWhom}
+    />
+  </View>
+)}
+  <ButtonGroup
+    onPress={idx => {
+      setPaymentIndex(idx);
+      const methods = ['cash', 'credit', 'account_transfer'];
+      setPaymentMethod(methods[idx]);
+    }}
+    selectedIndex={paymentIndex}
+    buttons={['Cash(ጥሬ)', 'Credit(ዱቤ)', 'Bank(ባንክ)']}
+    containerStyle={styles.paymentGroup}
+    buttonStyle={styles.paymentGroupButton}
+    selectedButtonStyle={styles.paymentGroupSelected}
+    textStyle={styles.paymentGroupText}
+  />
+</View>
+
 
               {/* Action Buttons */}
               <View style={styles.buttonContainer}>
-                <Button
-                  title="Cancel"
-                  onPress={() => setSelectedProduct(null)}
-                  buttonStyle={styles.cancelButton}
-                  titleStyle={styles.cancelButtonText}
-                />
-                <Button
+              <Button
                   title="Complete Sale"
                   onPress={handleSale}
                   loading={processing}
@@ -523,6 +527,13 @@ const SalesScreen = ({ navigation }) => {
                     />
                   }
                 />
+                <Button
+                  title="Cancel"
+                  onPress={() => setSelectedProduct(null)}
+                  buttonStyle={styles.cancelButton}
+                  titleStyle={styles.cancelButtonText}
+                />
+                
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -702,41 +713,65 @@ const styles = StyleSheet.create({
     color: '#2c3e50',
     textAlign: 'center',
   },
-  paymentContainer: {
-    marginVertical: 18,
-    padding: 12,
-    backgroundColor: '#f8f9fa',
+  saleFormOuter: {
+    flex: 1,
+    backgroundColor: '#ecf0f1',
+  },
+
+  // shrink the payment block
+  paymentContainerCompact: {
+    marginVertical: 12,
+    marginHorizontal: 16,
+    backgroundColor: 'transparent',
+  },
+  paymentGroup: {
+    borderRadius: 8,
+    height: 40,
+  },
+  paymentGroupButton: {
     borderRadius: 8,
   },
-  paymentLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 10,
-    color: '#2c3e50',
+  paymentGroupSelected: {
+    backgroundColor: '#27ae60',
   },
-  paymentButtons: {
+  paymentGroupText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bankContainer: {
+    marginVertical: 10,
+  },
+  bankLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  bankButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  paymentButton: {
-    minWidth: 100,
-    backgroundColor: '#2980b9',
-    borderRadius: 20,
-    paddingVertical: 8,
+  bankButton: {
+    width: '30%',
     marginBottom: 10,
-    flexGrow: 1,
-    marginHorizontal: 5,
+    backgroundColor: '#ddd',
   },
-  selectedPayment: {
-    backgroundColor: '#4DA8DA',
-    borderWidth: 4,
-    borderColor: 'red',
+  selectedBankButton: {
+    backgroundColor: '#2980b9',
   },
-  buttonContainer: {
+
+  // footer
+  footerButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: '#ddd',
+  },
+  footerBtn: {
+    flex: 0.48,
+    borderRadius: 6,
   },
   cancelButton: {
     backgroundColor: '#95a5a6',

@@ -15,10 +15,14 @@ import ProductDetailScreen from '../screens/ProductDetailScreen';
 import AddProductScreen from '../screens/AddProductScreen';
 import EditProductScreen from '../screens/EditProductScreen';
 import SalesScreen from '../screens/SalesScreen';
-import SpendingScreen from '../screens/SpendingScreen';
+import SpendingScreen from '../screens/SpendingScreen'
 import ReportsScreen from '../screens/ReportsScreen';
 import DetailedReportsScreen from '../screens/DetailedReportsScreen';
 import AdminUserManagement from '../screens/auth/AdminUserManagement';
+import AdminVehicleManagement from '../screens/auth/AdminVehicleManagement';
+import CarWashScreen from '../screens/auth/CarwashScreen';
+import CommissionReportScreen from '../screens/ComissionReportScreen';
+import CarWashSpendingScreen from '../screens/CarWashSpendingScreen'
 const Stack = createStackNavigator();
 
 const AuthStack = () => {
@@ -43,6 +47,12 @@ const AppStack = () => {
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Analytics Dashboard' }} />
       <Stack.Screen name="AdminUserManagement" component={AdminUserManagement} options={{ title: 'Admin User Management' }} />
       <Stack.Screen name="DetailedReports" component={DetailedReportsScreen} options={{ title: 'Detailed Reports' }} />
+      <Stack.Screen name="AdminVehicleManagement" component={AdminVehicleManagement} options={{ title: 'Admin Vehicle Management' }} />
+      <Stack.Screen name="CarWashScreen" component={CarWashScreen} options={{ title: 'Car Wash Screen' }} />
+      <Stack.Screen name="CommissionReportScreen" component={CommissionReportScreen} options={{ title: 'Commission Report' }} />
+            
+            <Stack.Screen name="CarWashSpendingScreen" component={CarWashSpendingScreen} options={{ title: 'Record Car Wash Spending' }} />
+
     </Stack.Navigator>
   );
 };

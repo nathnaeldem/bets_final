@@ -24,7 +24,7 @@ axiosRetry(axios, {
 // Define the API URL directly in the component
 const API_URL = 'https://dankula.x10.mx/auth.php';
 
-const SpendingScreen = () => {
+const CarWashSpendingScreen = () => {
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('purchase');
@@ -75,7 +75,7 @@ const SpendingScreen = () => {
         API_URL,
         spendingData,
         {
-          params: { action: 'add_spending' },
+          params: { action: 'add_car_spending' },
           headers: headers,
         }
       );
@@ -361,4 +361,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SpendingScreen;
+export default CarWashSpendingScreen;

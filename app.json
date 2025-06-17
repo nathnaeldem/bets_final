@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Dankula",
-    "slug": "dankula_shop_mgmt",
+    "name": "Betse Centeral",
+    "slug": "betse-central",
     "version": "1.0.0",
+    "scheme": "betsecentral",
     "orientation": "portrait",
     "icon": "./logo.png",
     "userInterfaceStyle": "light",
@@ -12,23 +13,27 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mrx.betsecentral"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "package": "com.mrx.dankula_shop_mgmt"
+      "package": "com.mrx.betsecentral",
+      "permissions": []
     },
     "web": {
       "favicon": "./logo.png"
     },
     "extra": {
       "eas": {
-        "projectId": "0b20bdfa-fd0e-4de0-9cc4-cb1f662c3349"
+        "projectId": "4db8a772-8f1c-4e42-bce1-0912dd3f076e"
       }
     }
   }

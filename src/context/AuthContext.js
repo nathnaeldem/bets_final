@@ -6,7 +6,7 @@ import axios from 'axios'; // Import axios directly
 const AuthContext = createContext();
 
 // Replace with your actual API base URL
-const API_URL = 'https://googsites.pro.et/auth.php'; // Make sure this is your correct API endpoint
+const API_URL = 'https://dankula.x10.mx/auth.php'; // Make sure this is your correct API endpoint
 
 // Create an axios instance for authentication requests
 const authAxios = axios.create({

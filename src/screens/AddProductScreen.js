@@ -9,7 +9,7 @@ import axiosRetry from 'axios-retry'; // Import axios-retry
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define the API URL
-const API_URL = 'https://googsites.pro.et/auth.php';
+const API_URL = 'https://dankula.x10.mx/auth.php';
 
 // --- Configure an Axios instance for product-related operations ---
 // This instance will handle retries and timeouts for its requests

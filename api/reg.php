@@ -2,7 +2,7 @@
 // test_register.php
 
 // Configuration
-$apiUrl = 'http://localhost/shop_mgmt/auth.php?action=register';
+$apiUrl = 'http://localhost/shop_mgmt/auth.php.php?action=register';
 $testData = [
     'username' => 'testuser_' . uniqid(), // Unique username for each test
     'email' => 'test_' . uniqid() . '@example.com',
