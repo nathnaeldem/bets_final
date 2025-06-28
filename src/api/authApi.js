@@ -128,6 +128,16 @@ const authApi = {
       );
     }
   },
+  getUnpaidTransactions: async () => {
+    try {
+      const response = await api.post('', {}, {
+        params: { action: 'get_unpaid_transactions' }
+      });
+      return response.data;
+    } catch (error) {
+      // Error handling
+    }
+  },
 
   getProductDetails: async (productId) => {
     try {

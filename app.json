@@ -1,13 +1,12 @@
 {
   "expo": {
-    "name": "Betse Centeral",
-    "slug": "betse-central",
+    "name": "Betse centralia",
+    "slug": "betse-centrallialia",
     "version": "1.0.0",
-    "scheme": "betsecentral",
+    "scheme": "betsecentrallial",
     "orientation": "portrait",
     "icon": "./logo.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -16,16 +15,19 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.mrx.betsecentral"
+      "bundleIdentifier": "com.mrx.betsecentrallial"
     },
     "android": {
+      "package": "com.mrx.betsecentrallial",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.mrx.betsecentral",
       "permissions": []
     },
     "web": {
@@ -33,7 +35,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "4db8a772-8f1c-4e42-bce1-0912dd3f076e"
+        "projectId": "e1edf6f6-f517-4e00-b531-c54d10d49959"
       }
     }
   }

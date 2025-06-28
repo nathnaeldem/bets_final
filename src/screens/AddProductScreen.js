@@ -1,51 +1,45 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, Button, Input, Card } from 'react-native-elements';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  TouchableOpacity,
+  Text,
+  Modal,
+} from 'react-native';
+import { Button, Input, Card } from 'react-native-elements';
 import { Formik } from 'formik';
 import * as Yup from 'yup';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import axiosRetry from 'axios-retry'; // Import axios-retry
+import axiosRetry from 'axios-retry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Define the API URL
 const API_URL = 'https://dankula.x10.mx/auth.php';
 
-// --- Configure an Axios instance for product-related operations ---
-// This instance will handle retries and timeouts for its requests
 const productApi = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 15000, // Set a timeout (e.g., 15 seconds) to trigger retries on slow responses
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 15000,
 });
-
-// Apply axios-retry to the productApi instance
 axiosRetry(productApi, {
-  retries: 3, // Number of retry attempts
-  retryDelay: (retryCount) => {
-    return retryCount * 1000; // Exponential backoff: 1s, 2s, 4s
-  },
-  retryCondition: (error) => {
-    // Retry only on network errors (timeouts, no internet, etc.)
-    // or 5xx server errors (transient server issues)
-    return axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error);
-  },
-  onRetry: (retryCount, error, requestConfig) => {
-    console.log(`Product API retry attempt ${retryCount} for ${requestConfig.url}: ${error.message}`);
-    // Optionally, you could show a very subtle toast message here like "Retrying..."
-  },
+  retries: 3,
+  retryDelay: (count) => count * 1000,
+  retryCondition: (error) =>
+    axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error),
 });
-// --- End Axios instance configuration ---
 
+const CATEGORIES = ['balstera', 'accessory', 'battery', 'mestawet', 'cherke', 'blon'];
 
 const AddProductScreen = ({ navigation }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   const ProductSchema = Yup.object().shape({
     name: Yup.string().required('የእቃ ስም ያስፈልጋል'),
+    category: Yup.string().required('ምድብ መምረጥ አለብዎት'),
     description: Yup.string(),
     quantity: Yup.number()
       .required('ብዛት አስፈላጊ ነው')
@@ -57,13 +51,9 @@ const AddProductScreen = ({ navigation }) => {
     selling_price: Yup.number()
       .required('የሽያጭ ዋጋ አስፈላጊ ነው')
       .positive('የሽያጭ ዋጋ አንፃፃፊ መሆን አለበት')
-      .test(
-        'is-greater',
-        'የሽያጭ ዋጋ ከየማምጫ ዋጋ በላይ መሆን አለበት',
-        function(value) {
-          return value > this.parent.import_price;
-        }
-      ),
+      .test('is-greater', 'የሽያጭ ዋጋ ከየማምጫ ዋጋ በላይ መሆን አለበት', function (value) {
+        return value > this.parent.import_price;
+      }),
   });
 
   const handleAddProduct = async (values, { resetForm }) => {
@@ -71,75 +61,42 @@ const AddProductScreen = ({ navigation }) => {
       Alert.alert('Error', 'ምርቶችን ማከል በአድሚኖች ብቻ ይቻላል');
       return;
     }
-
-    setLoading(true); // Start loading immediately
+    setLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      // No need to set headers object directly, productApi handles it
-      // but we need to set the Authorization header dynamically if a token exists
       if (token) {
         productApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       } else {
-        // Ensure Authorization header is removed if no token
         delete productApi.defaults.headers.common['Authorization'];
       }
 
-      const productPayload = {
-        ...values,
-        status: 'in_store',
-      };
+      const payload = { ...values, status: 'in_store' };
+      const res = await productApi.post('', payload, { params: { action: 'addProduct' } });
 
-      // Use the configured productApi instance
-      const response = await productApi.post(
-        '', // Empty string because baseURL already includes the full URL
-        productPayload,
-        {
-          params: { action: 'addProduct' },
-          // Headers are already set on the productApi instance, no need to duplicate
-          // headers: headers, // <-- REMOVE THIS LINE
-        }
-      );
-
-      // Axios-retry will only let the error propagate if all retries fail,
-      // or if the error condition is not met (e.g., 401 Unauthorized).
-      if (response.status === 200 || response.status === 201) { // 200 OK or 201 Created are both valid success codes
-        Alert.alert(
-          'ስኬት',
-          'በትክክል ተመዝግቧል ',
-          [{ text: 'OK', onPress: () => {
-            resetForm();
-            navigation.navigate('ProductList');
-          }}]
-        );
+      if ([200, 201].includes(res.status)) {
+        Alert.alert('ስኬት', 'በትክክል ተመዝግቧል', [
+          {
+            text: 'OK',
+            onPress: () => {
+              resetForm();
+              navigation.navigate('ProductList');
+            },
+          },
+        ]);
       } else {
-        // This block might be less frequently hit if using axios-retry effectively,
-        // as 5xx errors would trigger retries. But good for non-2xx responses.
-        Alert.alert('ስህተት', response.data?.message || 'ምርት ማከል አልተሳካም');
+        Alert.alert('ስህተት', res.data?.message || 'ምርት ማከል አልተሳካም');
       }
     } catch (err) {
-      console.error('Add product error:', err); // Log the full error object for better debugging
-
-      let errorMessage = 'ምርት ማከል አልተሳካም';
+      console.error(err);
+      let msg = 'ምርት ማከል አልተሳካም';
       if (axios.isAxiosError(err)) {
-        if (err.response) {
-          // Server responded with a status code outside 2xx (e.g., 400, 403, 404)
-          console.error('Response data:', err.response.data);
-          console.error('Response status:', err.response.status);
-          errorMessage = err.response.data?.message || `Error: ${err.response.status}`;
-        } else if (err.request) {
-          // Request was made but no response received (after all retries)
-          console.error('Request:', err.request);
-          errorMessage = 'የአውታረ መረብ ችግር: ከሰርቨሩ ምላሽ አልተገኘም (ከብዙ ሙከራዎች በኋላ).'; // Network issue: no response from server (after multiple attempts).
-        } else {
-          // Something else happened (e.g., setting up the request)
-          console.error('Error message:', err.message);
-          errorMessage = err.message || 'አንድ ያልታወቀ ስህተት ተከስቷል'; // An unknown error occurred.
-        }
+        if (err.response) msg = err.response.data?.message || `Error: ${err.response.status}`;
+        else if (err.request) msg = 'የአውታረ መረብ ችግር';
+        else msg = err.message;
       }
-
-      Alert.alert('ስህተት', errorMessage);
+      Alert.alert('ስህተት', msg);
     } finally {
-      setLoading(false); // Stop loading regardless of success or failure
+      setLoading(false);
     }
   };
 
@@ -152,15 +109,24 @@ const AddProductScreen = ({ navigation }) => {
         <Formik
           initialValues={{
             name: '',
+            category: '',
             description: '',
             quantity: '',
             import_price: '',
-            selling_price: ''
+            selling_price: '',
           }}
           validationSchema={ProductSchema}
           onSubmit={handleAddProduct}
         >
-          {({ handleChange, handleBlur, handleSubmit, values, errors, touched }) => (
+          {({
+            handleChange,
+            handleBlur,
+            handleSubmit,
+            values,
+            errors,
+            touched,
+            setFieldValue,
+          }) => (
             <View>
               <Input
                 label="Product Name"
@@ -172,6 +138,21 @@ const AddProductScreen = ({ navigation }) => {
                 labelStyle={{ color: 'black' }}
                 placeholderTextColor="#888"
               />
+
+              {/* Category Selector */}
+              <Text style={styles.label}>ምድብ</Text>
+              <TouchableOpacity
+                style={styles.categorySelector}
+                onPress={() => setShowCategoryModal(true)}
+              >
+                <Text style={styles.selectedCategoryText}>
+                  {values.category || 'ምድብ ይምረጡ'}
+                </Text>
+                <Text style={styles.arrow}>▼</Text>
+              </TouchableOpacity>
+              {touched.category && errors.category && (
+                <Text style={styles.errorText}>{errors.category}</Text>
+              )}
 
               <Input
                 label="Description - Optional"
@@ -228,7 +209,6 @@ const AddProductScreen = ({ navigation }) => {
                 loading={loading}
                 disabled={loading}
               />
-
               <Button
                 title="Cancel"
                 type="outline"
@@ -236,6 +216,40 @@ const AddProductScreen = ({ navigation }) => {
                 buttonStyle={styles.cancelButton}
                 disabled={loading}
               />
+
+              {/* ← Move Modal inside Formik so setFieldValue is available */}
+              <Modal
+                visible={showCategoryModal}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setShowCategoryModal(false)}
+              >
+                <View style={styles.modalContainer}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>ምድብ ይምረጡ</Text>
+                    <View style={styles.categoriesContainer}>
+                      {CATEGORIES.map((cat) => (
+                        <TouchableOpacity
+                          key={cat}
+                          style={styles.categoryButton}
+                          onPress={() => {
+                            setFieldValue('category', cat);
+                            setShowCategoryModal(false);
+                          }}
+                        >
+                          <Text style={styles.categoryText}>{cat}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                    <Button
+                      title="ዝጋ"
+                      buttonStyle={styles.closeButton}
+                      titleStyle={styles.buttonText}
+                      onPress={() => setShowCategoryModal(false)}
+                    />
+                  </View>
+                </View>
+              </Modal>
             </View>
           )}
         </Formik>
@@ -245,17 +259,70 @@ const AddProductScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  label: {
+    fontSize: 16,
+    color: '#86939e',
+    fontWeight: 'bold',
+    marginBottom: 8,
+    marginLeft: 10,
+  },
+  categorySelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#86939e',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 15,
+    marginHorizontal: 10,
+    backgroundColor: '#fff',
+  },
+  selectedCategoryText: { fontSize: 16, color: '#2d3436' },
+  arrow: { fontSize: 16, color: '#86939e' },
+  errorText: { color: 'red', marginLeft: 10, marginBottom: 10, fontSize: 14 },
+  modalContainer: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  submitButton: {
-    backgroundColor: '#2ecc71',
-    marginTop: 20,
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 20,
+    width: '90%',
+    maxHeight: '70%',
   },
-  cancelButton: {
-    marginTop: 10,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#2d3436',
+    marginBottom: 15,
+    textAlign: 'center',
   },
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  categoryButton: {
+    backgroundColor: '#ecf0f1',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    margin: 5,
+    borderWidth: 1,
+    borderColor: '#dfe6e9',
+  },
+  categoryText: { fontSize: 16, color: '#2d3436', fontWeight: '500' },
+  closeButton: { backgroundColor: '#e74c3c', borderRadius: 12, height: 48, marginTop: 10 },
+  buttonText: { fontWeight: '600', fontSize: 15, color: 'white' },
+  submitButton: { backgroundColor: '#2ecc71', marginTop: 20 },
+  cancelButton: { marginTop: 10 },
 });
 
 export default AddProductScreen;

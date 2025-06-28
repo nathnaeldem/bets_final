@@ -20,9 +20,11 @@ export default function CarwashTransactionManagement() {
     payment_method: null,
   });
   const [loading, setLoading]     = useState(false);
-
+  const [selectedBank, setSelectedBank] = useState('');
+  
   // Predefined payment methods
   const paymentMethods = ['Cash', 'Institution', 'Bank'];
+  const banks = ['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'];
 
   const call = async (action, data = {}) => {
     const token = await AsyncStorage.getItem('token');
@@ -53,6 +55,13 @@ export default function CarwashTransactionManagement() {
     fetchData();
   }, []);
 
+  // Reset bank selection when payment method changes
+  useEffect(() => {
+    if (form.payment_method !== 'Bank') {
+      setSelectedBank('');
+    }
+  }, [form.payment_method]);
+
   const handleRecord = async () => {
     const { worker_ids, vehicle_id, wash_type, payment_method } = form;
     
@@ -61,13 +70,24 @@ export default function CarwashTransactionManagement() {
       return Alert.alert('Error', 'All fields are required. Please select at least one worker, vehicle, wash type, and payment method.');
     }
     
-    // ... rest of function
+    // Validate bank selection if payment method is Bank
+    if (payment_method === 'Bank' && !selectedBank) {
+      return Alert.alert('Error', 'Please select a bank for bank transactions.');
+    }
+    
     setLoading(true);
     try {
-      const res = await call('create_carwash_transaction', form);
+      // Include bank name in form data if payment method is Bank
+      const formData = {
+        ...form,
+        bank_name: payment_method === 'Bank' ? selectedBank : ''
+      };
+      
+      const res = await call('create_carwash_transaction', formData);
       if (!res.success) throw new Error(res.message);
       Alert.alert('Success','Carwash transaction recorded successfully!');
       setForm({ worker_ids: [], vehicle_id: null, wash_type: 'full', payment_method: null });      // reload data
+      setSelectedBank('');
       const wRes = await call('get_unpaid_workers');
       const vRes = await call('get_vehicless');
       setWorkers(wRes.success ? wRes.workers : []);
@@ -102,25 +122,25 @@ export default function CarwashTransactionManagement() {
 
       <Text style={styles.label}>Select Worker</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScrollContainer}>
-  {workers.map(item => (
-    <TouchableOpacity
-      key={String(item.id)}
-      style={[styles.choice, form.worker_ids.includes(item.id) && styles.choiceActive]}
-      onPress={() => {
-        setForm(f => {
-          const newIds = f.worker_ids.includes(item.id)
-            ? f.worker_ids.filter(id => id !== item.id)
-            : [...f.worker_ids, item.id];
-          return {...f, worker_ids: newIds};
-        });
-      }}
-    >
-      <Text style={[styles.choiceText, form.worker_ids.includes(item.id) && styles.choiceTextActive]}>
-        {item.name} ({item.unpaid_commission || '0.00'} ETB)
-      </Text>
-    </TouchableOpacity>
-  ))}
-</ScrollView>
+        {workers.map(item => (
+          <TouchableOpacity
+            key={String(item.id)}
+            style={[styles.choice, form.worker_ids.includes(item.id) && styles.choiceActive]}
+            onPress={() => {
+              setForm(f => {
+                const newIds = f.worker_ids.includes(item.id)
+                  ? f.worker_ids.filter(id => id !== item.id)
+                  : [...f.worker_ids, item.id];
+                return {...f, worker_ids: newIds};
+              });
+            }}
+          >
+            <Text style={[styles.choiceText, form.worker_ids.includes(item.id) && styles.choiceTextActive]}>
+              {item.name} ({item.unpaid_commission || '0.00'} ETB)
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       <Text style={styles.label}>Select Vehicle</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScrollContainer}>
@@ -164,6 +184,36 @@ export default function CarwashTransactionManagement() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Bank Selection */}
+      {form.payment_method === 'Bank' && (
+        <>
+          <Text style={styles.label}>Select Bank</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            style={styles.horizontalScrollContainer}
+          >
+            {banks.map(bank => (
+              <TouchableOpacity
+                key={bank}
+                style={[
+                  styles.choice, 
+                  selectedBank === bank && styles.choiceActive
+                ]}
+                onPress={() => setSelectedBank(bank)}
+              >
+                <Text style={[
+                  styles.choiceText,
+                  selectedBank === bank && styles.choiceTextActive
+                ]}>
+                  {bank}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </>
+      )}
 
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
@@ -342,4 +392,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#777777',
   }
-}); 
+});

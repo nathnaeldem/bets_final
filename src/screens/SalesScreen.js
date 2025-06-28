@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import {
   View,
   FlatList,
@@ -15,7 +15,8 @@ import { Text, Button, Card, Input, Icon, ButtonGroup } from 'react-native-eleme
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axiosRetry from 'axios-retry'; // Import axios-retry
+import axiosRetry from 'axios-retry';
+import { useWindowDimensions } from 'react-native'; // Import axios-retry
 
 // Configure axios-retry
 axiosRetry(axios, {
@@ -32,10 +33,13 @@ axiosRetry(axios, {
 const API_URL = 'https://dankula.x10.mx/auth.php';
 
 const SalesScreen = ({ navigation }) => {
+  const { width } = useWindowDimensions(); // Get screen width
   const [paymentIndex, setPaymentIndex] = useState(1);
-const [selectedBank, setSelectedBank] = useState('');
-const [toWhom, setToWhom] = useState('');
-const [unpaidAmount, setUnpaidAmount] = useState('');
+  const [selectedBank, setSelectedBank] = useState('');
+  const [toWhom, setToWhom] = useState('');
+  const [unpaidAmount, setUnpaidAmount] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('all');
 
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
@@ -49,10 +53,10 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
   const [networkError, setNetworkError] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchProducts = async () => {
+ const fetchProducts = async () => {
     try {
       setLoading(true);
-      setNetworkError(false); // Reset network error on new fetch attempt
+      setNetworkError(false);
       const token = await AsyncStorage.getItem('token');
       const headers = {
         'Content-Type': 'application/json',
@@ -74,10 +78,17 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
         (product) => product.status === 'in_store' && product.quantity > 0
       );
       setProducts(availableProducts);
+      
+      // Extract unique categories
+      const uniqueCategories = ['all', ...new Set(
+        response.data.products
+          .map(p => p.category)
+          .filter(cat => cat && cat.trim() !== '')
+      )];
+      setCategories(uniqueCategories);
     } catch (err) {
-      console.error("Fetch products error:", err); // More specific error logging
+      console.error("Fetch products error:", err);
       setNetworkError(true);
-      // Only show Alert if it's not a retryable error being handled by axios-retry
       if (!axiosRetry.isNetworkError(err) && !axiosRetry.isRetryableError(err)) {
           Alert.alert('Error', err.response?.data?.message || 'Failed to fetch products');
       }
@@ -99,6 +110,7 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
     setSelectedBank('');
     setToWhom('');
     setUnpaidAmount('');
+    setPaymentIndex(1);
   };
 
   const calculateTotalPrice = () => {
@@ -268,10 +280,11 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
     </Card>
   );
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+ const filteredProducts = products.filter(product => {
+    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -307,7 +320,7 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
     );
   }
 
-  return (
+ return (
     <View style={styles.flexContainer}>
       {/* Header */}
       <View style={styles.header}>
@@ -324,6 +337,32 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
       {!selectedProduct ? (
         <View style={styles.productListContainer}>
           <Text style={styles.sectionTitle}>Select a Product to Sell</Text>
+          
+          {/* Category Filter */}
+          <View style={styles.categoryContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryScrollContent}
+            >
+              {categories.map((category, index) => (
+                <Button
+                  key={index}
+                  title={category}
+                  onPress={() => setSelectedCategory(category)}
+                  buttonStyle={[
+                    styles.categoryButton,
+                    selectedCategory === category && styles.selectedCategoryButton
+                  ]}
+                  titleStyle={[
+                    styles.categoryButtonText,
+                    selectedCategory === category && styles.selectedCategoryButtonText
+                  ]}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          
           {/* Search Input */}
           <Input
             placeholder="Search products by name..."
@@ -337,6 +376,8 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
             containerStyle={styles.searchBarContainer}
             inputContainerStyle={styles.searchBarInputContainer}
           />
+          
+          {/* Product List */}
           {filteredProducts.length === 0 && products.length > 0 ? (
             <View style={styles.centered}>
               <Text style={styles.noProductsText}>No products found matching your search.</Text>
@@ -391,6 +432,11 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
                 <Text style={styles.selectedProductInfo}>
                   Suggested Price: ${selectedProduct.selling_price}
                 </Text>
+                {selectedProduct.category && (
+                  <Text style={styles.selectedProductInfo}>
+                    Category: {selectedProduct.category}
+                  </Text>
+                )}
               </Card>
 
               {/* Quantity and Price in Row */}
@@ -455,63 +501,80 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
                 containerStyle={styles.inputField}
               />
 
-             {/* Payment Method */}
-<View style={styles.paymentContainerCompact}>
-{paymentMethod === 'account_transfer' && (
-  <View style={styles.bankContainer}>
-    <Text style={styles.bankLabel}>Select Bank:</Text>
-    <View style={styles.bankButtons}>
-      {['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'].map((bank) => (
-        <Button
-          key={bank}
-          title={bank}
-          onPress={() => setSelectedBank(bank)}
-          buttonStyle={[
-            styles.bankButton,
-            selectedBank === bank && styles.selectedBankButton,
-          ]}
-        />
-      ))}
-    </View>
-  </View>
-)}
+              {/* Payment Method */}
+              <View style={styles.paymentContainer}>
+                <Text style={styles.paymentLabel}>Payment Method:</Text>
+                <ButtonGroup
+                  onPress={idx => {
+                    setPaymentIndex(idx);
+                    const methods = ['cash', 'credit', 'account_transfer'];
+                    setPaymentMethod(methods[idx]);
+                  }}
+                  selectedIndex={paymentIndex}
+                  buttons={['Cash(ጥሬ)', 'Credit(ዱቤ)', 'Bank(ባንክ)']}
+                  containerStyle={styles.paymentGroup}
+                  buttonStyle={styles.paymentGroupButton}
+                  selectedButtonStyle={styles.paymentGroupSelected}
+                  textStyle={styles.paymentGroupText}
+                />
+                
+                {/* Payment Details */}
+                {paymentMethod === 'account_transfer' && (
+                  <View style={styles.paymentDetails}>
+                    <Text style={styles.paymentSubLabel}>Select Bank:</Text>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.bankScrollView}
+                    >
+                      {['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'].map((bank) => (
+                        <Button
+                          key={bank}
+                          title={bank}
+                          onPress={() => setSelectedBank(bank)}
+                          buttonStyle={[
+                            styles.bankButton,
+                            selectedBank === bank && styles.selectedBankButton,
+                          ]}
+                          titleStyle={styles.bankButtonText}
+                          containerStyle={styles.bankButtonContainer}
+                        />
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
 
-{paymentMethod === 'credit' && (
-  <View>
-    <Input
-      label="Unpaid Amount"
-      placeholder="Enter amount"
-      value={unpaidAmount}
-      onChangeText={setUnpaidAmount}
-      keyboardType="numeric"
-    />
-    <Input
-      label="To Whom"
-      placeholder="Customer name"
-      value={toWhom}
-      onChangeText={setToWhom}
-    />
-  </View>
-)}
-  <ButtonGroup
-    onPress={idx => {
-      setPaymentIndex(idx);
-      const methods = ['cash', 'credit', 'account_transfer'];
-      setPaymentMethod(methods[idx]);
-    }}
-    selectedIndex={paymentIndex}
-    buttons={['Cash(ጥሬ)', 'Credit(ዱቤ)', 'Bank(ባንክ)']}
-    containerStyle={styles.paymentGroup}
-    buttonStyle={styles.paymentGroupButton}
-    selectedButtonStyle={styles.paymentGroupSelected}
-    textStyle={styles.paymentGroupText}
-  />
-</View>
-
+                {paymentMethod === 'credit' && (
+                  <View style={styles.paymentDetails}>
+                    <View style={styles.creditRow}>
+                      <View style={[styles.creditInput, { flex: width > 500 ? 0.48 : 1 }]}>
+                        <Input
+                          label="Unpaid Amount"
+                          placeholder="Enter amount"
+                          value={unpaidAmount}
+                          onChangeText={setUnpaidAmount}
+                          keyboardType="numeric"
+                          containerStyle={styles.creditInputField}
+                        />
+                      </View>
+                      {width > 500 && <View style={{ width: 10 }} />}
+                      <View style={[styles.creditInput, { flex: width > 500 ? 0.48 : 1 }]}>
+                        <Input
+                          label="To Whom"
+                          placeholder="Customer name"
+                          value={toWhom}
+                          onChangeText={setToWhom}
+                          containerStyle={styles.creditInputField}
+                        />
+                      </View>
+                    </View>
+                  </View>
+                )}
+              </View>
 
               {/* Action Buttons */}
               <View style={styles.buttonContainer}>
-              <Button
+                <Button
                   title="Complete Sale"
                   onPress={handleSale}
                   loading={processing}
@@ -533,7 +596,6 @@ const [unpaidAmount, setUnpaidAmount] = useState('');
                   buttonStyle={styles.cancelButton}
                   titleStyle={styles.cancelButtonText}
                 />
-                
               </View>
             </ScrollView>
           </KeyboardAvoidingView>
@@ -573,7 +635,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#8B4513', // Dark brown
+    backgroundColor: '#8B4513',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 25,
@@ -717,16 +779,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ecf0f1',
   },
-
-  // shrink the payment block
-  paymentContainerCompact: {
+  paymentContainer: {
     marginVertical: 12,
-    marginHorizontal: 16,
     backgroundColor: 'transparent',
+  },
+  paymentLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 8,
+    color: '#2c3e50',
+  },
+  paymentSubLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#34495e',
   },
   paymentGroup: {
     borderRadius: 8,
     height: 40,
+    marginBottom: 10,
   },
   paymentGroupButton: {
     borderRadius: 8,
@@ -738,55 +810,63 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  bankContainer: {
-    marginVertical: 10,
+  paymentDetails: {
+    marginTop: 10,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
   },
-  bankLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  bankScrollView: {
+    marginBottom: 10,
+  },
+  bankButtonContainer: {
+    marginRight: 8,
     marginBottom: 8,
   },
-  bankButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
   bankButton: {
-    width: '30%',
-    marginBottom: 10,
-    backgroundColor: '#ddd',
+    backgroundColor: '#e0e0e0',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   selectedBankButton: {
     backgroundColor: '#2980b9',
   },
-
-  // footer
-  footerButtons: {
+  bankButtonText: {
+    color: '#2c3e50',
+    fontSize: 14,
+  },
+  creditRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderColor: '#ddd',
+    flexWrap: 'wrap',
   },
-  footerBtn: {
-    flex: 0.48,
-    borderRadius: 6,
+  creditInput: {
+    marginBottom: 10,
+  },
+  creditInputField: {
+    marginBottom: 0,
+    paddingHorizontal: 0,
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
   },
   cancelButton: {
     backgroundColor: '#95a5a6',
     borderRadius: 6,
-    flex: 0.45,
     paddingVertical: 12,
+    flex: 0.45,
   },
   cancelButtonText: {
     fontWeight: 'bold',
   },
   saleButton: {
-    backgroundColor: '#e74c3c',
+    backgroundColor: '#27ae60',
     borderRadius: 6,
-    flex: 0.45,
     paddingVertical: 12,
+    flex: 0.45,
   },
   saleButtonText: {
     fontWeight: 'bold',
@@ -816,6 +896,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#bdc3c7',
     paddingHorizontal: 10,
+  },
+  // Category filter styles
+  categoryContainer: {
+    height: 50,
+    marginBottom: 10,
+  },
+  categoryScrollContent: {
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  categoryButton: {
+    marginHorizontal: 4,
+    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 15,
+    backgroundColor: '#e0e0e0',
+  },
+  selectedCategoryButton: {
+    backgroundColor: '#2980b9',
+  },
+  categoryButtonText: {
+    fontSize: 14,
+    color: '#2c3e50',
+  },
+  selectedCategoryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 
