@@ -48,6 +48,8 @@ const ProductListScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState(''); 
   const [categories, setCategories] = useState([]); 
   const [selectedCategory, setSelectedCategory] = useState('ሁሉም'); 
+  const [unitsFilterMode, setUnitsFilterMode] = useState('ሁሉም');
+  const [unitsThreshold, setUnitsThreshold] = useState('');
 
   const fetchProducts = useCallback(async () => { 
     setLoading(true); 
@@ -75,7 +77,7 @@ const ProductListScreen = ({ navigation }) => {
       const uniqueCategories = ['ሁሉም', ...new Set(fetchedData.map(p => p.category))];
       setCategories(uniqueCategories);
       
-      applyFilters(fetchedData, searchQuery, selectedCategory);
+      applyFilters(fetchedData, searchQuery, selectedCategory, unitsFilterMode, unitsThreshold);
     } catch (err) { 
       console.error('Error fetching products:', err); 
       let errorMessage = 'ምርቶችን ማግኘት አልተቻለም። እባክዎ የኢንተርኔት ግንኙነትዎን ያረጋግጡ።'; 
@@ -97,9 +99,9 @@ const ProductListScreen = ({ navigation }) => {
     } finally { 
       setLoading(false); 
     } 
-  }, [searchQuery, selectedCategory]); 
+  }, [searchQuery, selectedCategory, unitsFilterMode, unitsThreshold]); 
 
-  const applyFilters = (data, query, category) => {
+  const applyFilters = (data, query, category, mode, threshold) => {
     let filtered = [...data];
     
     // Apply category filter
@@ -107,44 +109,68 @@ const ProductListScreen = ({ navigation }) => {
       filtered = filtered.filter(product => product.category === category);
     }
     
+    // Apply units filter
+    if (mode !== 'ሁሉም') {
+      if (mode === 'ቀሪ አለ') {
+        filtered = filtered.filter(product => product.quantity > 0);
+      } else if (mode === 'ተጠናቀቀ') {
+        filtered = filtered.filter(product => product.quantity <= 0);
+      } else if (mode === 'በመጠን' && threshold) {
+        const thresholdNum = parseInt(threshold);
+        if (!isNaN(thresholdNum)) {
+          filtered = filtered.filter(product => product.quantity < thresholdNum);
+        }
+      }
+    }
+    
     // Apply search query
     if (query) { 
       const lowerCaseQuery = query.toLowerCase(); 
       filtered = filtered.filter(product => 
         product.name.toLowerCase().includes(lowerCaseQuery) || 
-        product.status.toLowerCase().includes(lowerCaseQuery) || 
-        product.quantity.toString().includes(lowerCaseQuery) || 
-        product.import_price.toString().includes(lowerCaseQuery) || 
-        product.selling_price.toString().includes(lowerCaseQuery) ||
-        (product.category && product.category.toLowerCase().includes(lowerCaseQuery))
+        product.description?.toLowerCase().includes(lowerCaseQuery)
       ); 
-    }
+    } 
     
-    setFilteredProducts(filtered);
+    setFilteredProducts(filtered); 
+  }; 
+
+  const handleSearch = (text) => { 
+    setSearchQuery(text); 
+    applyFilters(products, text, selectedCategory, unitsFilterMode, unitsThreshold); 
+  }; 
+
+  const handleCategorySelect = (category) => { 
+    setSelectedCategory(category); 
+    applyFilters(products, searchQuery, category, unitsFilterMode, unitsThreshold); 
+  }; 
+
+  const handleUnitsFilter = (mode) => {
+    setUnitsFilterMode(mode);
+    applyFilters(products, searchQuery, selectedCategory, mode, unitsThreshold);
+  };
+
+  const handleUnitsThresholdChange = (text) => {
+    setUnitsThreshold(text);
+    if (unitsFilterMode === 'በመጠን') {
+      applyFilters(products, searchQuery, selectedCategory, 'በመጠን', text);
+    }
   };
 
   useEffect(() => { 
     fetchProducts(); 
-    const unsubscribe = navigation.addListener('focus', fetchProducts); 
-    return unsubscribe; 
-  }, [navigation, fetchProducts]); 
-
-  const handleSearch = (text) => { 
-    setSearchQuery(text); 
-    applyFilters(products, text, selectedCategory);
-  }; 
-
-  const handleCategorySelect = (category) => {
-    setSelectedCategory(category);
-    applyFilters(products, searchQuery, category);
-  };
+  }, []); 
 
   const getStatusColor = (status) => { 
     switch (status) { 
-      case 'ordered': return '#f1c40f'; 
-      case 'in_store': return '#2ecc71'; 
-      case 'sold': return '#3498db'; 
-      default: return '#7f8c8d'; 
+      case 'active': 
+        return '#00b894'; 
+      case 'inactive': 
+        return '#e17055'; 
+      case 'low_stock': 
+        return '#fdcb6e'; 
+      default: 
+        return '#636e72'; 
     } 
   }; 
 
@@ -152,25 +178,24 @@ const ProductListScreen = ({ navigation }) => {
     <Card containerStyle={styles.card}> 
       <View style={styles.cardHeader}> 
         <Text style={styles.productName}>{item.name}</Text> 
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
-          <Text style={styles.statusText}> 
-            {item.status.replace('_', ' ').toUpperCase()} 
-          </Text> 
+        <View 
+          style={[ 
+            styles.statusBadge, 
+            { backgroundColor: getStatusColor(item.status) }, 
+          ]} 
+        > 
+          <Text style={styles.statusText}>{item.status}</Text> 
         </View> 
       </View> 
-
-      <Card.Divider style={styles.divider} /> 
-
+      <View style={styles.divider} /> 
       <View style={styles.detailsContainer}> 
-        <DetailRow label="ብዛት፡" value={item.quantity} /> 
-        <DetailRow label="የግብይት ዋጋ፡" value={`ETB${item.import_price}`} /> 
-        <DetailRow label="የሽያጭ ዋጋ፡" value={`ETB${item.selling_price}`} /> 
-        <DetailRow label="ምድብ፡" value={item.category} /> 
+        <DetailRow label="የተለያዩ ክፍሎች" value={item.quantity} /> 
+        <DetailRow label="የገባበት ዋጋ" value={`${item.import_price} ብር`} /> 
+        <DetailRow label="የሽያጭ ዋጋ" value={`${item.selling_price} ብር`} /> 
+        <DetailRow label="ምድብ" value={item.category} /> 
       </View> 
-
       <Button 
-        title="ዝርዝር አሳይ" 
-        icon={<Icon name="chevron-right" type="material" size={20} color="white" />} 
+        title="ዝርዝር ይመልከቱ" 
         buttonStyle={styles.detailButton} 
         titleStyle={styles.buttonText} 
         onPress={() => navigation.navigate('ProductDetail', { productId: item.id })} 
@@ -178,51 +203,42 @@ const ProductListScreen = ({ navigation }) => {
     </Card> 
   ); 
 
-  if (loading && products.length === 0) { 
-    return ( 
-      <View style={styles.loadingContainer}> 
-        <ActivityIndicator size="large" color="#0984e3" /> 
-      </View> 
-    ); 
-  } 
-
-  if (error && products.length === 0) { 
-    return ( 
-      <View style={styles.errorContainer}> 
-        <Icon name="wifi-off" type="material-community" size={50} color="#e74c3c" /> 
-        <Text style={styles.errorText}>{error}</Text> 
-        <Button 
-          title="እንደገና ይሞክሩ" 
-          buttonStyle={styles.retryButton} 
-          titleStyle={styles.buttonText} 
-          onPress={fetchProducts} 
-        /> 
-      </View> 
-    ); 
-  } 
-
   return ( 
     <View style={styles.container}> 
       <View style={styles.header}> 
-        <Text style={styles.screenTitle}>የእቃ መዝገብ</Text> 
-        {user?.role === 'admin' && ( 
-          <Button 
-            icon={<Icon name="add" size={22} color="white" />} 
-            title=" አዲስ እቃ መዝግብ" 
-            buttonStyle={styles.addButton} 
-            titleStyle={styles.buttonText} 
-            onPress={() => navigation.navigate('AddProduct')} 
-          /> 
-        )} 
+        <Text style={styles.screenTitle}>የምርት ዝርዝር</Text> 
+        <Button 
+          icon={<Icon name="add" size={20} color="white" />} 
+          title="አዲስ" 
+          buttonStyle={styles.addButton} 
+          titleStyle={styles.buttonText} 
+          onPress={() => navigation.navigate('AddProduct')} 
+        /> 
       </View> 
 
-      {/* Horizontal Category Filter */}
+      <View style={styles.searchContainer}> 
+        <TextInput 
+          style={styles.searchInput} 
+          placeholder="ምርቶችን ይፈልጉ..." 
+          value={searchQuery} 
+          onChangeText={handleSearch} 
+        /> 
+        {searchQuery ? ( 
+          <TouchableOpacity 
+            style={styles.clearIcon} 
+            onPress={() => handleSearch('')} 
+          > 
+            <Icon name="close" size={20} color="#636e72" /> 
+          </TouchableOpacity> 
+        ) : null} 
+      </View> 
+
       <View style={styles.categoryContainer}>
-        <Text style={styles.categoryTitle}>ምድቦችን ያጣሩ</Text>
+        <Text style={styles.categoryTitle}>የምድብ ማጣሪያ:</Text>
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoryScrollView}
+          style={styles.categoryScrollView}
         >
           {categories.map((category) => (
             <TouchableOpacity
@@ -244,43 +260,76 @@ const ProductListScreen = ({ navigation }) => {
         </ScrollView>
       </View>
 
-      <View style={styles.searchContainer}> 
-        <TextInput 
-          style={styles.searchInput} 
-          placeholder="ምርቶችን ይፈልጉ..." 
-          placeholderTextColor="#95a5a6" 
-          onChangeText={handleSearch} 
-          value={searchQuery} 
-        /> 
-        {searchQuery.length > 0 && ( 
-          <Icon 
-            name="close" 
-            size={24} 
-            color="#95a5a6" 
-            containerStyle={styles.clearIcon} 
-            onPress={() => { 
-              setSearchQuery(''); 
-              applyFilters(products, '', selectedCategory);
-            }} 
-          /> 
-        )} 
-      </View> 
+      <View style={styles.categoryContainer}>
+        <Text style={styles.categoryTitle}>የቀሪ ክፍሎች ማጣሪያ:</Text>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryScrollView}
+        >
+          {['ሁሉም', 'ቀሪ አለ', 'ተጠናቀቀ', 'በመጠን'].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.categoryPill,
+                unitsFilterMode === filter && styles.selectedCategoryPill
+              ]}
+              onPress={() => handleUnitsFilter(filter)}
+            >
+              <Text style={[
+                styles.categoryText,
+                unitsFilterMode === filter && styles.selectedCategoryText
+              ]}>
+                {filter}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        {unitsFilterMode === 'በመጠን' && (
+          <View style={styles.thresholdInputContainer}>
+            <TextInput
+              style={styles.thresholdInput}
+              placeholder="ከዚህ በታች ያሉ ምርቶችን አሳይ"
+              keyboardType="numeric"
+              value={unitsThreshold}
+              onChangeText={handleUnitsThresholdChange}
+            />
+          </View>
+        )}
+      </View>
 
-      <FlatList 
-        data={filteredProducts} 
-        keyExtractor={(item) => item.id.toString()} 
-        renderItem={renderItem} 
-        contentContainerStyle={styles.listContainer} 
-        showsVerticalScrollIndicator={false} 
-        ListEmptyComponent={() => ( 
-          !loading && !error && filteredProducts.length === 0 && ( 
-            <View style={styles.emptyListContainer}> 
-              <Icon name="info" type="material" size={40} color="#7f8c8d" /> 
-              <Text style={styles.emptyListText}>ምንም ምርቶች አልተገኙም።</Text> 
-            </View> 
-          ) 
-        )} 
-      /> 
+      {loading ? ( 
+        <View style={styles.loadingContainer}> 
+          <ActivityIndicator size="large" color="#0984e3" /> 
+        </View> 
+      ) : error ? ( 
+        <View style={styles.errorContainer}> 
+          <Text style={styles.errorText}>{error}</Text> 
+          <Button 
+            title="እንደገና ይሞክሩ" 
+            buttonStyle={styles.retryButton} 
+            titleStyle={styles.buttonText} 
+            onPress={fetchProducts} 
+          /> 
+        </View> 
+      ) : filteredProducts.length === 0 ? ( 
+        <View style={styles.emptyListContainer}> 
+          <Icon name="search-off" size={50} color="#b2bec3" /> 
+          <Text style={styles.emptyListText}>ምንም ምርቶች አልተገኙም</Text> 
+        </View> 
+      ) : ( 
+        <FlatList 
+          data={filteredProducts} 
+          renderItem={renderItem} 
+          keyExtractor={(item) => item.id.toString()} 
+          contentContainerStyle={styles.listContainer} 
+          ListFooterComponent={() => ( 
+            <View style={{ height: 30 }} /> 
+          )} 
+          refreshing={loading} 
+          onRefresh={fetchProducts} 
+        /> 
+      )} 
     </View> 
   ); 
 }; 
@@ -342,6 +391,24 @@ const styles = StyleSheet.create({
   },
   selectedCategoryText: {
     color: 'white',
+  },
+  thresholdInputContainer: {
+    marginTop: 10,
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  thresholdInput: {
+    color: '#2d3436',
+    fontSize: 16,
+    height: '100%',
   },
   searchContainer: { 
     flexDirection: 'row', 
@@ -473,6 +540,6 @@ const styles = StyleSheet.create({
     marginTop: 10, 
     textAlign: 'center', 
   }, 
-}); 
+});
 
 export default ProductListScreen;

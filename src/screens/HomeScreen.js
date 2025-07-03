@@ -230,6 +230,20 @@ const HomeScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate('ProductList')}
                 />
                 <Button
+                    title="Bank Deposit"
+                    onPress={() => navigation.navigate('BankDeposit')}
+                    buttonStyle={styles.tertiaryButton}
+                    titleStyle={styles.buttonTitle}
+                    icon={
+                      <MaterialIcons 
+                        name="account-balance" 
+                        size={24} 
+                        color="white" 
+                        style={styles.icon} 
+                      />
+                    }
+                  />
+                <Button
                   title="New Sale"
                   buttonStyle={styles.secondaryButton}
                   titleStyle={styles.buttonTitle}
@@ -286,6 +300,7 @@ const HomeScreen = ({ navigation }) => {
                   icon={<MaterialIcons name="manage-accounts" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('AdminUserManagement')}
                 />
+                
               </>
             ) : user?.role === 'worker' ? (
               <>

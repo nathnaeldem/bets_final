@@ -79,7 +79,7 @@ function recordLoginAttempt($pdo, $username, $success, $organizationId = null) {
 
 // --- Main API Handler ---
 $input = json_decode(file_get_contents('php://input'), true);
-$action = $_GET['action'] ?? '';
+$action = $_GET['action'] ?? ($input['action'] ?? '');
 
 // Initialize user and organization variables
 $user = null;
@@ -87,14 +87,16 @@ $loggedInUserId = null;
 $organizationId = null;
 
 // --- Authentication Check for Protected Routes ---
-$protectedRoutes = ['addProduct', 'updateProduct', 'updateProductStatus', 'getProducts', 'getProductDetails', 'sellProduct', 'add_spending','add_car_spending', 'get_reports','change_password','register_user','create_worker','update_vehicle','get_vehicless','create_vehicle','get_unpaid_workers','get_carwash_spendings',
+$protectedRoutes = ['addProduct', 'updateProduct', 'updateProductStatus','manageProduct', 'getProducts', 'getProductDetails', 'sellProduct', 'add_spending','add_car_spending', 'get_reports','change_password','register_user','create_worker','update_vehicle','get_vehicless','create_vehicle','get_unpaid_workers','get_carwash_spendings',
     'get_vehicles',               // ← make sure this is here
     'create_carwash_transaction',
     'pay_commission',
     'create_vehicle',
+    'get_unpaid_transactions', 'pay_unpaid_amount',
     'update_vehicle','get_commission_summary',
   'get_carwash_transactions',
-  'get_paid_commissions'];
+  'get_paid_commissions',
+  'checkout']; // Added checkout here
 if (in_array($action, $protectedRoutes)) {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     $token = null;
@@ -137,7 +139,6 @@ if (in_array($action, $protectedRoutes)) {
         exit;
     }
 }
-
 
 try {
     switch ($action) {
@@ -409,52 +410,64 @@ try {
             }
             break;
 
-        case 'addProduct':
-            // $loggedInUserId, $organizationId, $user (role) are set
-            if ($user['role'] !== 'admin') {
-                http_response_code(403);
-                echo json_encode(['message' => 'Unauthorized access']);
-                exit;
-            }
-            $required = ['name', 'import_price', 'selling_price', 'quantity', 'status']; // status for inventory
-            foreach ($required as $field) {
-                if (!isset($input[$field])) {
-                    http_response_code(400);
-                    echo json_encode(['message' => "$field is required"]);
-                    exit;
-                }
-            }
-            $pdo->beginTransaction();
-            try {
-                $stmt = $pdo->prepare("INSERT INTO products (name, description, category, import_price, selling_price, organization_id)
-                                         VALUES (:name, :description, :category, :import_price, :selling_price, :organization_id)");
-                $stmt->execute([
-                    ':name' => $input['name'],
-                    ':description' => $input['description'] ?? '',
-                    ':category' => $input['category'] ?? '',
-                    ':import_price' => $input['import_price'],
-                    ':selling_price' => $input['selling_price'],
-                    ':organization_id' => $organizationId
-                ]);
-                $productId = $pdo->lastInsertId();
+       // ... existing code ...
 
-                $stmt = $pdo->prepare("INSERT INTO product_inventory (product_id, quantity, status)
-                                         VALUES (:product_id, :quantity, :status)");
-                $stmt->execute([
-                    ':product_id' => $productId,
-                    ':quantity' => $input['quantity'],
-                    ':status' => $input['status']
-                ]);
+case 'addProduct':
+    // Authorization check
+    if ($user['role'] !== 'admin') {
+        http_response_code(403);
+        echo json_encode(['message' => 'Unauthorized access']);
+        exit;
+    }
+    
+    // Required fields (without 'category')
+    $required = ['name', 'import_price', 'selling_price', 'quantity', 'status']; 
+    foreach ($required as $field) {
+        if (!isset($input[$field])) {
+            http_response_code(400);
+            echo json_encode(['message' => "$field is required"]);
+            exit;
+        }
+    }
+    
+    // Set default category if not provided
+    $category = $input['category'] ?? 'Uncategorized'; // Default: 'Uncategorized'
+    
+    $pdo->beginTransaction();
+    try {
+        // Insert into products table
+        $stmt = $pdo->prepare("INSERT INTO products (name, description, category, import_price, selling_price, organization_id)
+                                VALUES (:name, :description, :category, :import_price, :selling_price, :organization_id)");
+        $stmt->execute([
+            ':name' => $input['name'],
+            ':description' => $input['description'] ?? '',
+            ':category' => $category, // Uses input or default
+            ':import_price' => $input['import_price'],
+            ':selling_price' => $input['selling_price'],
+            ':organization_id' => $organizationId
+        ]);
+        $productId = $pdo->lastInsertId();
 
-                $pdo->commit();
-                http_response_code(201);
-                echo json_encode(['message' => 'Product added successfully', 'product_id' => $productId]);
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                http_response_code(500);
-                echo json_encode(['message' => 'Failed to add product: ' . $e->getMessage()]);
-            }
-            break;
+        // Insert into inventory
+        $stmt = $pdo->prepare("INSERT INTO product_inventory (product_id, quantity, status)
+                                VALUES (:product_id, :quantity, :status)");
+        $stmt->execute([
+            ':product_id' => $productId,
+            ':quantity' => $input['quantity'],
+            ':status' => $input['status']
+        ]);
+
+        $pdo->commit();
+        http_response_code(201);
+        echo json_encode(['message' => 'Product added successfully', 'product_id' => $productId]);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['message' => 'Failed to add product: ' . $e->getMessage()]);
+    }
+    break;
+
+// ... existing code ...
 
         case 'updateProduct':
             // $loggedInUserId, $organizationId, $user (role) are set
@@ -608,7 +621,7 @@ try {
 
         case 'sellProduct':
             // $loggedInUserId, $organizationId are set
-            $required = ['product_id', 'quantity_sold', 'sold_price', 'payment_method'];
+            $required = ['products', 'payment_method'];
             foreach ($required as $field) {
                 if (!isset($input[$field])) {
                     http_response_code(400);
@@ -616,6 +629,14 @@ try {
                     exit;
                 }
             }
+            
+            // Validate products array
+            if (!is_array($input['products']) || empty($input['products'])) {
+                http_response_code(400);
+                echo json_encode(['message' => "Products must be a non-empty array"]);
+                exit;
+            }
+            
             $validMethods = ['cash', 'credit', 'account_transfer'];
             if (!in_array($input['payment_method'], $validMethods)) {
                 http_response_code(400);
@@ -625,75 +646,105 @@ try {
 
             $pdo->beginTransaction();
             try {
-                // Get current inventory and verify product belongs to organization
-                $stmt = $pdo->prepare("SELECT pi.quantity, pi.status FROM product_inventory pi
-                                       JOIN products p ON pi.product_id = p.id
-                                       WHERE pi.product_id = :product_id AND p.organization_id = :organization_id");
-                $stmt->execute([':product_id' => $input['product_id'], ':organization_id' => $organizationId]);
-                $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$inventory) {
-                    http_response_code(404);
-                    echo json_encode(['message' => 'Product not found or not part of your organization.']);
-                    $pdo->rollBack();
-                    exit;
-                }
-                if ($inventory['status'] !== 'in_store') {
-                    http_response_code(400);
-                    echo json_encode(['message' => 'Product is not available for sale']);
-                    $pdo->rollBack();
-                    exit;
-                }
-                if ($inventory['quantity'] < $input['quantity_sold']) {
-                    http_response_code(400);
-                    echo json_encode(['message' => 'Insufficient quantity in stock']);
-                    $pdo->rollBack();
-                    exit;
-                }
-
-                $newQuantity = $inventory['quantity'] - $input['quantity_sold'];
-                $newStatus = $newQuantity > 0 ? 'in_store' : 'sold'; // If 0, status becomes 'sold'
-
-                $stmt = $pdo->prepare("UPDATE product_inventory SET quantity = :quantity, status = :status, status_changed_at = NOW()
-                                       WHERE product_id = :product_id");
+                // Create parent transaction record
+                $stmt = $pdo->prepare("
+                    INSERT INTO transactions 
+                        (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date)
+                    VALUES 
+                        (:user_id, :organization_id, :payment_method, :bank_name, :comment, :unpaid_amount, :customer_name, NOW())
+                ");
+                $bankName = $input['bank_name'] ?? '';
+                $unpaidAmount = $input['unpaid_amount'] ?? 0;
+                $customerName = $input['to_whom'] ?? '';
                 $stmt->execute([
-                    ':quantity' => $newQuantity,
-                    ':status' => $newStatus,
-                    ':product_id' => $input['product_id']
-                ]);
-
-                $stmt = $pdo->prepare(" 
-    INSERT INTO product_transactions 
-      (product_id, quantity, previous_status, new_status, user_id, comment, Sold_Price, payment_method, organization_id, bank_name, unpaid_amount) 
-    VALUES 
-      (:product_id, :quantity, :previous_status, :new_status, :user_id, :comment, :sold_price, :payment_method, :organization_id, :bank_name, :unpaid_amount) 
-");
-
-    $bankName = $input['bank_name'] ?? '';
-    $unpaidAmount = $input['unpaid_amount'] ?? 0;
-    $toWhom = $input['to_whom'] ?? '';
-                $stmt->execute([
-                    ':product_id'     => $input['product_id'],
-                    ':quantity'       => $input['quantity_sold'],
-                    ':previous_status'=> 'in_store',
-                    ':new_status'     => $newStatus,
-                    ':user_id'        => $loggedInUserId,
-                    ':comment' => ($input['payment_method'] === 'credit') ? $toWhom : ($input['comment'] ?? ''),
-        ':bank_name' => $bankName,
-        ':unpaid_amount' => $unpaidAmount,
-                    ':sold_price'     => $input['sold_price'],
+                    ':user_id' => $loggedInUserId,
+                    ':organization_id' => $organizationId,
                     ':payment_method' => $input['payment_method'],
-                    ':organization_id'=> $organizationId
+                    ':bank_name' => $bankName,
+                    ':comment' => ($input['payment_method'] === 'credit') ? $customerName : ($input['comment'] ?? ''),
+                    ':unpaid_amount' => $unpaidAmount,
+                    ':customer_name' => $customerName
                 ]);
+                $transactionId = $pdo->lastInsertId();
 
-                recordActivity($pdo, $loggedInUserId, 'product_sale', "Sold {$input['quantity_sold']} units of product {$input['product_id']}", $organizationId);
+                // Process each product
+                foreach ($input['products'] as $product) {
+                    // Validate product data
+                    if (!isset($product['product_id'], $product['quantity_sold'], $product['sold_price'])) {
+                        throw new Exception("Each product must have product_id, quantity_sold, and sold_price");
+                    }
+
+                    // Get current inventory and verify product belongs to organization
+                    $stmt = $pdo->prepare("SELECT pi.quantity, pi.status FROM product_inventory pi
+                                           JOIN products p ON pi.product_id = p.id
+                                           WHERE pi.product_id = :product_id AND p.organization_id = :organization_id");
+                    $stmt->execute([':product_id' => $product['product_id'], ':organization_id' => $organizationId]);
+                    $inventory = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$inventory) {
+                        throw new Exception("Product {$product['product_id']} not found or not part of your organization");
+                    }
+                    if ($inventory['status'] !== 'in_store') {
+                        throw new Exception("Product {$product['product_id']} is not available for sale");
+                    }
+                    if ($inventory['quantity'] < $product['quantity_sold']) {
+                        throw new Exception("Insufficient quantity in stock for product {$product['product_id']}");
+                    }
+
+                    // Update inventory
+                    $newQuantity = $inventory['quantity'] - $product['quantity_sold'];
+                    $newStatus = $newQuantity > 0 ? 'in_store' : 'sold';
+                    $stmt = $pdo->prepare("UPDATE product_inventory SET quantity = :quantity, status = :status, status_changed_at = NOW()
+                                           WHERE product_id = :product_id");
+                    $stmt->execute([
+                        ':quantity' => $newQuantity,
+                        ':status' => $newStatus,
+                        ':product_id' => $product['product_id']
+                    ]);
+
+                    // Add to transaction_items
+                    $stmt = $pdo->prepare("
+                        INSERT INTO transaction_items 
+                            (transaction_id, product_id, quantity, unit_price)
+                        VALUES 
+                            (:transaction_id, :product_id, :quantity, :unit_price)
+                    ");
+                    $stmt->execute([
+                        ':transaction_id' => $transactionId,
+                        ':product_id' => $product['product_id'],
+                        ':quantity' => $product['quantity_sold'],
+                        ':unit_price' => $product['sold_price']
+                    ]);
+
+                    // Record in product_transactions (for backward compatibility)
+                    $stmt = $pdo->prepare("
+                        INSERT INTO product_transactions 
+                            (product_id, quantity, previous_status, new_status, user_id, comment, Sold_Price, payment_method, organization_id, bank_name, unpaid_amount) 
+                        VALUES 
+                            (:product_id, :quantity, :previous_status, :new_status, :user_id, :comment, :sold_price, :payment_method, :organization_id, :bank_name, :unpaid_amount) 
+                    ");
+                    $stmt->execute([
+                        ':product_id' => $product['product_id'],
+                        ':quantity' => $product['quantity_sold'],
+                        ':previous_status' => 'in_store',
+                        ':new_status' => $newStatus,
+                        ':user_id' => $loggedInUserId,
+                        ':comment' => ($input['payment_method'] === 'credit') ? $customerName : ($input['comment'] ?? ''),
+                        ':sold_price' => $product['sold_price'],
+                        ':payment_method' => $input['payment_method'],
+                        ':organization_id' => $organizationId,
+                        ':bank_name' => $bankName,
+                        ':unpaid_amount' => $unpaidAmount
+                    ]);
+                }
+
                 $pdo->commit();
                 http_response_code(200);
-                echo json_encode(['message' => 'Product sold successfully', 'remaining_quantity' => $newQuantity]);
+                echo json_encode(['message' => 'Transaction completed successfully', 'transaction_id' => $transactionId]);
             } catch (Exception $e) {
                 $pdo->rollBack();
                 http_response_code(500);
-                echo json_encode(['message' => 'Failed to sell product: ' . $e->getMessage()]);
+                echo json_encode(['message' => 'Transaction failed: ' . $e->getMessage()]);
             }
             break;
 
@@ -1285,84 +1336,87 @@ case 'get_unpaid_workers':
 
     // 3) Record a carwash transaction
     case 'create_carwash_transaction':
-        if (empty($input['worker_ids']) || !is_array($input['worker_ids']) || 
-            empty($input['vehicle_id']) || !isset($input['wash_type']) || 
-            empty($input['payment_method'])) {
-            
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'All fields required.']);
-            exit;
-        }
-    
-        $workerIds = $input['worker_ids'];
-        $vehicleId = intval($input['vehicle_id']);
-        $washType = $input['wash_type'];
-        $paymentMethod = trim($input['payment_method']);
-        $numWorkers = count($workerIds);
-    
-        // Fetch vehicle tariff
-        $stmt = $pdo->prepare("SELECT tariff, partial_tariff FROM vehicles 
-                              WHERE id = :vid AND organization_id = :org");
-        $stmt->execute([':vid' => $vehicleId, ':org' => $organizationId]);
-        $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
-    
-        if (!$vehicle) {
-            http_response_code(404);
-            echo json_encode(['success' => false, 'message' => 'Vehicle not found.']);
-            exit;
-        }
-    
-        $tariff = ($washType === 'partial') ? $vehicle['partial_tariff'] : $vehicle['tariff'];
-        $totalCommission = $tariff * 0.35;
-        $commissionPerWorker = $totalCommission / $numWorkers;
-    
-        // In auth.php, inside case 'create_carwash_transaction':
-
-// ... (code before the transaction block) ...
-
-$pdo->beginTransaction();
-
-try {
-    // Encode the worker IDs array into a JSON string to store in the database
-    $workerIdsJson = json_encode($workerIds);
-
-    // Create transaction record - THIS BLOCK IS MODIFIED
-    $stmt = $pdo->prepare("INSERT INTO carwash_transactions
-                          (organization_id, user_id, vehicle_id, tariff, commission_amount,
-                          transaction_date, payment_method, worker_id, worker_ids)
-                          VALUES (:org, :uid, :vid, :tariff, :commission, NOW(), :pm, :main_worker_id, :all_worker_ids)");
-    $stmt->execute([
-        ':org' => $organizationId,
-        ':uid' => $loggedInUserId,
-        ':vid' => $vehicleId,
-        ':tariff' => $tariff,
-        ':commission' => $totalCommission,
-        ':pm' => $paymentMethod,
-        ':main_worker_id' => $workerIds[0], // Use the first selected worker for the NOT NULL column
-        ':all_worker_ids' => $workerIdsJson  // Save the complete array as JSON
-    ]);
-
-    // Update each worker's commission (this part is correct)
-    foreach ($workerIds as $workerId) {
-        $stmt = $pdo->prepare("UPDATE workers
-                              SET unpaid_commission = unpaid_commission + :commission
-                              WHERE id = :wid AND organization_id = :org");
-        $stmt->execute([
-            ':commission' => $commissionPerWorker,
-            ':wid' => $workerId,
-            ':org' => $organizationId
-        ]);
+    if (empty($input['worker_ids']) || !is_array($input['worker_ids']) || 
+        empty($input['vehicle_id']) || !isset($input['wash_type']) || 
+        empty($input['payment_method'])) {
+        
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'All fields required.']);
+        exit;
     }
 
-    $pdo->commit();
-    echo json_encode(['success' => true, 'message' => 'Transaction recorded.']);
-} catch (Exception $e) {
-    $pdo->rollBack();
-    http_response_code(500);
-    // Add the specific error message for easier debugging
-    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
-}
-break;
+    $workerIds = $input['worker_ids'];
+    $vehicleId = intval($input['vehicle_id']);
+    $washType = $input['wash_type'];
+    $paymentMethod = trim($input['payment_method']);
+    $numWorkers = count($workerIds);
+    $bankName = $input['bank_name'] ?? '';
+
+    // Validate bank selection for bank payments
+    if ($paymentMethod === 'Bank' && empty($bankName)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Bank selection required for bank payments.']);
+        exit;
+    }
+
+    // Fetch vehicle tariff
+    $stmt = $pdo->prepare("SELECT tariff, partial_tariff FROM vehicles 
+                          WHERE id = :vid AND organization_id = :org");
+    $stmt->execute([':vid' => $vehicleId, ':org' => $organizationId]);
+    $vehicle = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$vehicle) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'message' => 'Vehicle not found.']);
+        exit;
+    }
+    $tariff = ($washType === 'partial') ? $vehicle['partial_tariff'] : $vehicle['tariff'];
+    $totalCommission = $tariff * 0.35;
+    $commissionPerWorker = $totalCommission / $numWorkers;
+
+    $pdo->beginTransaction();
+
+    try {
+        // Encode the worker IDs array into a JSON string
+        $workerIdsJson = json_encode($workerIds);
+
+        // Create transaction record with bank name
+        $stmt = $pdo->prepare("INSERT INTO carwash_transactions
+                              (organization_id, user_id, vehicle_id, tariff, commission_amount,
+                              transaction_date, payment_method, worker_id, worker_ids, bank_name)
+                              VALUES (:org, :uid, :vid, :tariff, :commission, NOW(), :pm, :main_worker_id, :all_worker_ids, :bank_name)");
+        $stmt->execute([
+            ':org' => $organizationId,
+            ':uid' => $loggedInUserId,
+            ':vid' => $vehicleId,
+            ':tariff' => $tariff,
+            ':commission' => $totalCommission,
+            ':pm' => $paymentMethod,
+            ':main_worker_id' => $workerIds[0],
+            ':all_worker_ids' => $workerIdsJson,
+            ':bank_name' => $bankName
+        ]);
+
+        // Update each worker's commission
+        foreach ($workerIds as $workerId) {
+            $stmt = $pdo->prepare("UPDATE workers
+                                  SET unpaid_commission = unpaid_commission + :commission
+                                  WHERE id = :wid AND organization_id = :org");
+            $stmt->execute([
+                ':commission' => $commissionPerWorker,
+                ':wid' => $workerId,
+                ':org' => $organizationId
+            ]);
+        }
+
+        $pdo->commit();
+        echo json_encode(['success' => true, 'message' => 'Transaction recorded.']);
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+    }
+    break;
 
     // 4) Pay out a worker’s unpaid commission
     case 'pay_commission':
@@ -1548,8 +1602,194 @@ case 'get_carwash_spendings':
     echo json_encode(['success'=>true,'spendings'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
     break;
 
+case 'get_unpaid_transactions':
+    $stmt = $pdo->prepare("SELECT * FROM product_transactions WHERE unpaid_amount > 0 AND organization_id = :org_id");
+    $stmt->execute([':org_id' => $organizationId]);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    break;
 
+case 'pay_unpaid_amount':
+    $data = $input;
+    $stmt = $pdo->prepare("UPDATE product_transactions SET unpaid_amount = unpaid_amount - :amount WHERE id = :id");
+    $stmt->execute([':amount' => $data['amount'], ':id' => $data['transaction_id']]);
+    echo json_encode(['success' => true]);
+    break;
 
+    // … previous cases …
+
+       case 'manageProduct':
+        if ($user['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => 'Unauthorized']);
+            exit;
+        }
+        // Decide insert vs. update
+        if (isset($input['product_id']) && $input['product_id']) {
+            // === UPDATE ===
+            // (Copy your updateProduct logic here)
+            $required = ['product_id','name','import_price','selling_price','quantity','status'];
+            foreach ($required as $f) {
+                if (!isset($input[$f])) {
+                    http_response_code(400);
+                    echo json_encode(['message'=>"$f is required"]);
+                    exit;
+                }
+            }
+            $pdo->beginTransaction();
+            try {
+                // Scoped product update
+                $stmt = $pdo->prepare(
+                  "UPDATE products SET
+                     name=?, description=?, import_price=?, selling_price=?
+                   WHERE id=? AND organization_id=?"
+                );
+                $stmt->execute([
+                  $input['name'], $input['description'] ?? '',
+                  $input['import_price'], $input['selling_price'],
+                  $input['product_id'], $organizationId
+                ]);
+                $stmt = $pdo->prepare(
+                  "UPDATE product_inventory
+                     SET quantity=?, status=?, status_changed_at=NOW()
+                   WHERE product_id=?"
+                );
+                $stmt->execute([
+                  $input['quantity'], $input['status'], $input['product_id']
+                ]);
+                recordActivity($pdo, $loggedInUserId, 'product_update',
+                               "Updated product ID: {$input['product_id']}", $organizationId);
+                $pdo->commit();
+                echo json_encode(['message'=>'Product updated']);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['message'=>'Update failed: '.$e->getMessage()]);
+            }
+        } else {
+            // === INSERT ===
+            $required = ['name','category','import_price','selling_price','quantity','status'];
+            foreach ($required as $f) {
+                if (empty($input[$f])) {
+                    http_response_code(400);
+                    echo json_encode(['message'=>"$f is required"]);
+                    exit;
+                }
+            }
+            $pdo->beginTransaction();
+            try {
+                $stmt = $pdo->prepare(
+                  "INSERT INTO products
+                   (name, description, category, import_price, selling_price, organization_id)
+                   VALUES (:name, :description, :category, :import_price, :selling_price, :org)"
+                );
+                $stmt->execute([
+                  ':name' => $input['name'],
+                  ':description' => $input['description'] ?? '',
+                  ':category' => $input['category'],
+                  ':import_price' => $input['import_price'],
+                  ':selling_price' => $input['selling_price'],
+                  ':org' => $organizationId
+                ]);
+                $pid = $pdo->lastInsertId();
+                $stmt = $pdo->prepare(
+                  "INSERT INTO product_inventory
+                   (product_id, quantity, status)
+                   VALUES (:pid, :quantity, :status)"
+                );
+                $stmt->execute([
+                  ':pid' => $pid,
+                  ':quantity' => $input['quantity'],
+                  ':status'   => $input['status']
+                ]);
+                $pdo->commit();
+                http_response_code(201);
+                echo json_encode(['message'=>'Product added','product_id'=>$pid]);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['message'=>'Add failed: '.$e->getMessage()]);
+            }
+        }
+        break;
+
+    
+
+    // … existing getProducts, getProductDetails …  
+
+        case 'checkout':
+            try {
+                // Validate cart data
+                if (empty($input['cart'])) {
+                    throw new Exception("Cart data is required");
+                }
+                
+                $cart = json_decode($input['cart'], true);
+                $paymentMethod = $input['payment_method'] ?? 'cash';
+                $bankName = $input['bank_name'] ?? '';
+                $customerName = $input['customer_name'] ?? '';
+                $unpaidAmount = floatval($input['unpaid_amount'] ?? 0);
+                $comment = $input['comment'] ?? '';
+
+                // Begin transaction
+                $pdo->beginTransaction();
+
+                // 1. Create transaction record
+                $stmt = $pdo->prepare("INSERT INTO transactions 
+                    (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->execute([
+                    $loggedInUserId, 
+                    $organizationId,
+                    $paymentMethod, 
+                    $bankName, 
+                    $comment, 
+                    $unpaidAmount, 
+                    $customerName
+                ]);
+                $transactionId = $pdo->lastInsertId();
+
+                // 2. Process each cart item
+                foreach ($cart as $item) {
+                    if (empty($item['product_id']) || empty($item['quantity']) || empty($item['price'])) {
+                        throw new Exception("Invalid cart item format");
+                    }
+
+                    // Insert transaction item
+                    $stmt = $pdo->prepare("INSERT INTO transaction_items 
+                        (transaction_id, product_id, quantity, unit_price)
+                        VALUES (?, ?, ?, ?)");
+                    $stmt->execute([
+                        $transactionId,
+                        $item['product_id'],
+                        $item['quantity'],
+                        $item['price']
+                    ]);
+
+                    // Update inventory
+                    $stmt = $pdo->prepare("UPDATE product_inventory 
+                        SET quantity = quantity - ? 
+                        WHERE product_id = ? AND quantity >= ?");
+                    $stmt->execute([$item['quantity'], $item['product_id'], $item['quantity']]);
+
+                    if ($stmt->rowCount() === 0) {
+                        throw new Exception("Insufficient inventory for product ID: " . $item['product_id']);
+                    }
+                }
+
+                // Commit transaction
+                $pdo->commit();
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Checkout completed',
+                    'transaction_id' => $transactionId
+                ]);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
+            break;
 
         default:
             http_response_code(404);
@@ -1562,5 +1802,3 @@ case 'get_carwash_spendings':
     echo json_encode(['message' => 'Server error: ' . $e->getMessage()]);
 }
 ?>
-
-

@@ -1,66 +1,55 @@
-import React, { useState, useEffect } from 'react'; 
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
-  Keyboard,
-  TouchableWithoutFeedback,
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  FlatList, 
+  TouchableOpacity, 
+  ActivityIndicator, 
   KeyboardAvoidingView,
-  ScrollView,
-  Platform,
+  Platform, 
+  TextInput, 
+  Dimensions, 
+  Alert
 } from 'react-native';
-import { Text, Button, Card, Input, Icon, ButtonGroup } from 'react-native-elements'
-import { useAuth } from '../context/AuthContext';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axiosRetry from 'axios-retry';
-import { useWindowDimensions } from 'react-native'; // Import axios-retry
 
-// Configure axios-retry
-axiosRetry(axios, {
-  retries: 3, // Number of retry attempts
-  retryDelay: (retryCount) => {
-    return retryCount * 1000; // Exponential back-off: 1s, 2s, 3s
-  },
-  retryCondition: (error) => {
-    // Retry only on network errors (e.g., no response, timeout)
-    return axiosRetry.isNetworkError(error) || axiosRetry.isRetryableError(error);
-  },
-});
+const API_URL = 'http://dankula.x10.mx/auth.php';
+const windowWidth = Dimensions.get('window').width;
+const bankOptions = ['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'];
 
-const API_URL = 'https://dankula.x10.mx/auth.php';
-
-const SalesScreen = ({ navigation }) => {
-  const { width } = useWindowDimensions(); // Get screen width
-  const [paymentIndex, setPaymentIndex] = useState(1);
-  const [selectedBank, setSelectedBank] = useState('');
-  const [toWhom, setToWhom] = useState('');
-  const [unpaidAmount, setUnpaidAmount] = useState('');
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-
-  const { user } = useAuth();
+const SalesScreen = () => {
+  // State variables
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [quantitySold, setQuantitySold] = useState('');
-  const [soldPrice, setSoldPrice] = useState('');
+  const [cart, setCart] = useState([]);
   const [comment, setComment] = useState('');
-  const [processing, setProcessing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('credit');
-  const [networkError, setNetworkError] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [selectedBank, setSelectedBank] = useState('');
+  const [customer, setCustomer] = useState('');
+  const [unpaidAmount, setUnpaidAmount] = useState('');
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [networkError, setNetworkError] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categories, setCategories] = useState([]);
+  const [secondaryPaymentMethod, setSecondaryPaymentMethod] = useState('cash');
+  const [secondarySelectedBank, setSecondarySelectedBank] = useState('');
 
- const fetchProducts = async () => {
+  // Fetch products from API
+  const fetchProducts = async () => {
     try {
       setLoading(true);
       setNetworkError(false);
+      
       const token = await AsyncStorage.getItem('token');
       const headers = {
         'Content-Type': 'application/json',
       };
+      
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
@@ -77,21 +66,12 @@ const SalesScreen = ({ navigation }) => {
       const availableProducts = response.data.products.filter(
         (product) => product.status === 'in_store' && product.quantity > 0
       );
-      setProducts(availableProducts);
       
-      // Extract unique categories
-      const uniqueCategories = ['all', ...new Set(
-        response.data.products
-          .map(p => p.category)
-          .filter(cat => cat && cat.trim() !== '')
-      )];
-      setCategories(uniqueCategories);
+      setProducts(availableProducts);
     } catch (err) {
       console.error("Fetch products error:", err);
       setNetworkError(true);
-      if (!axiosRetry.isNetworkError(err) && !axiosRetry.isRetryableError(err)) {
-          Alert.alert('Error', err.response?.data?.message || 'Failed to fetch products');
-      }
+      Alert.alert('Error', 'Failed to fetch products. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -101,828 +81,795 @@ const SalesScreen = ({ navigation }) => {
     fetchProducts();
   }, []);
 
-  const selectProduct = (product) => {
-    setSelectedProduct(product);
-    setQuantitySold('');
-    setSoldPrice(product.selling_price.toString());
-    setComment('');
-    setPaymentMethod('credit');
-    setSelectedBank('');
-    setToWhom('');
-    setUnpaidAmount('');
-    setPaymentIndex(1);
+  useEffect(() => {
+    if (products.length > 0) {
+      const uniqueCategories = ['All', ...new Set(products.map(p => p.category))];
+      setCategories(uniqueCategories);
+    }
+  }, [products]);
+
+  // Cart management functions
+  const addToCart = (product) => {
+    setCart(prevCart => {
+      const existingItem = prevCart.find(item => item.product_id === product.id);
+      if (existingItem) {
+        return prevCart.map(item => 
+          item.product_id === product.id 
+            ? {...item, quantity: item.quantity + 1} 
+            : item
+        );
+      }
+      return [...prevCart, {
+        product_id: product.id,
+        name: product.name,
+        quantity: 1,
+        price: product.selling_price,
+        maxQuantity: product.quantity
+      }];
+    });
   };
 
-  const calculateTotalPrice = () => {
-    const qty = parseInt(quantitySold) || 0;
-    const price = parseFloat(soldPrice) || 0;
-    return (qty * price).toFixed(2);
+  const removeFromCart = (productId) => {
+    setCart(prevCart => prevCart.filter(item => item.product_id !== productId));
   };
 
-  const handleSale = async () => {
-    if (!selectedProduct) {
-      Alert.alert('Error', 'Please select a product');
+  const updateCartItem = (productId, field, value) => {
+    setCart(prevCart => 
+      prevCart.map(item => 
+        item.product_id === productId ? {...item, [field]: value} : item
+      )
+    );
+  };
+
+  const calculateTotal = () => {
+    return cart.reduce((total, item) => 
+      total + (item.quantity * item.price), 0
+    ).toFixed(2);
+  };
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) {
+      Alert.alert('Error', 'Your cart is empty');
       return;
     }
 
-    const qty = parseInt(quantitySold);
-    const price = parseFloat(soldPrice);
-
-    if (!qty || qty <= 0) {
-      Alert.alert('Error', 'Please enter a valid quantity');
+    if (paymentMethod === 'credit' && !customer) {
+      Alert.alert('Error', 'Please enter customer name for credit payment');
       return;
     }
 
-    if (!price || price <= 0) {
-      Alert.alert('Error', 'Please enter a valid price');
-      return;
-    }
-
-    if (qty > selectedProduct.quantity) {
-      Alert.alert('Error', 'Quantity exceeds available stock');
-      return;
-    }
-
-    if (!paymentMethod) {
-      Alert.alert('Error', 'Please select a payment method');
-      return;
-    }
-
+    setProcessing(true);
+    
     try {
-      setProcessing(true);
       const token = await AsyncStorage.getItem('token');
       const headers = {
         'Content-Type': 'application/json',
       };
+      
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const saleData = {
-        product_id: selectedProduct.id,
-        quantity_sold: qty,
-        sold_price: price,
-        payment_method: paymentMethod,
-        comment: comment,
-        bank_name: selectedBank,
-        unpaid_amount: paymentMethod === 'credit' ? unpaidAmount : 0,
-        to_whom: paymentMethod === 'credit' ? toWhom : '',
-      };
-
       const response = await axios.post(
         API_URL,
-        saleData,
         {
-          params: { action: 'sellProduct' },
-          headers: headers,
-        }
+          action: 'checkout',
+          cart: JSON.stringify(cart),
+          payment_method: paymentMethod,
+          bank_name: paymentMethod === 'bank' ? selectedBank : 
+                    (paymentMethod === 'credit' && secondaryPaymentMethod === 'bank') ? secondarySelectedBank : '',
+          customer_name: customer,
+          unpaid_amount: unpaidAmount,
+          secondary_payment_method: paymentMethod === 'credit' ? secondaryPaymentMethod : null,
+          comment: comment
+        },
+        { headers: headers }
       );
 
-      if (response.data && response.data.success === false) {
-        Alert.alert('Error', response.data.message || 'Sale processing failed.');
+      if (response.data.success) {
+        Alert.alert('Success', 'Checkout completed successfully');
+        setCart([]);
+        setComment('');
+        setPaymentMethod('cash');
+        setSelectedBank('');
+        setCustomer('');
+        setUnpaidAmount('');
+        setSecondaryPaymentMethod('cash');
+        setSecondarySelectedBank('');
+        fetchProducts();
       } else {
-        Alert.alert('Success', 'Product sold successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              setSelectedProduct(null);
-              fetchProducts();
-            },
-          },
-        ]);
+        Alert.alert('Error', response.data.message || 'Checkout failed');
       }
-    } catch (error) {
-      console.error("Sale processing error:", error); // More specific error logging
-      // Only show Alert if it's not a retryable error being handled by axios-retry
-      if (!axiosRetry.isNetworkError(error) && !axiosRetry.isRetryableError(error)) {
-          Alert.alert('Error', error.response?.data?.message || error.message || 'An unexpected error occurred.');
-      } else {
-          // You might want to show a more specific message if all retries failed due to network
-          Alert.alert('Network Issue', 'Could not complete sale due to a network problem after multiple retries. Please check your connection and try again.');
-          setNetworkError(true); // Indicate network error in UI
-      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      Alert.alert('Error', err.response?.data?.message || 'Checkout failed');
     } finally {
       setProcessing(false);
     }
   };
 
-  const renderProductItem = ({ item }) => (
-    <Card containerStyle={styles.card}>
-      <View style={styles.cardInner}>
-        <View style={styles.cardHeader}>
-          <Icon
-            name="box-open"
-            type="font-awesome-5"
-            size={22}
-            color="#2980b9"
-            containerStyle={{ marginRight: 8 }}
-          />
-          <Text style={styles.cardTitle}>{item.name}</Text>
-        </View>
-        <Card.Divider />
-
-        <View style={styles.productInfo}>
-          <View style={styles.infoRow}>
-            <Icon
-              name="boxes"
-              type="font-awesome-5"
-              size={18}
-              color="#34495e"
-              containerStyle={styles.iconSpacing}
-            />
-            <Text style={styles.label}>የቀረ ብዛት:</Text>
-            <Text style={styles.value}>{item.quantity} units</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Icon
-              name="tag"
-              type="font-awesome"
-              size={18}
-              color="#34495e"
-              containerStyle={styles.iconSpacing}
-            />
-            <Text style={styles.label}>መሸጫ:</Text>
-            <Text style={styles.value}>${item.selling_price}</Text>
-          </View>
-          {item.description && (
-            <View style={styles.infoRow}>
-              <Icon
-                name="info-circle"
-                type="font-awesome"
-                size={18}
-                color="#34495e"
-                containerStyle={styles.iconSpacing}
-              />
-              <Text style={styles.label}>Description:</Text>
-              <Text style={styles.value}>{item.description}</Text>
-            </View>
-          )}
-        </View>
-
-        <Button
-          title={selectedProduct?.id === item.id ? 'Selected' : 'Select for Sale'}
-          onPress={() => selectProduct(item)}
-          buttonStyle={[
-            styles.selectButton,
-            selectedProduct?.id === item.id && styles.selectedButton,
-          ]}
-          titleStyle={styles.selectButtonText}
-          icon={
-            <Icon
-              name={selectedProduct?.id === item.id ? 'check-circle' : 'cart-plus'}
-              type="font-awesome"
-              color="#fff"
-              containerStyle={{ marginRight: 6 }}
-            />
-          }
-        />
+  const renderProduct = ({ item }) => (
+    <View style={styles.productCard}>
+      <View style={styles.productContent}>
+        <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+        <Text style={styles.productPrice}>{item.selling_price} ETB</Text>
+        <Text style={styles.productStock}>Available: {item.quantity}</Text>
       </View>
-    </Card>
+      <TouchableOpacity 
+        style={styles.addToCartButton}
+        onPress={() => addToCart(item)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.addToCartText}>Add to Cart</Text>
+      </TouchableOpacity>
+    </View>
   );
 
- const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#2980b9" />
-        <Text style={styles.loadingText}>Loading products...</Text>
-      </View>
-    );
-  }
-
-  if (networkError) {
-    return (
-      <View style={styles.centered}>
-        <Icon name="exclamation-triangle" type="font-awesome" size={50} color="#e74c3c" />
-        <Text style={styles.errorText}>Network Error</Text>
-        <Text style={styles.errorDescription}>
-          Could not connect to the server. Please check your internet connection.
-        </Text>
-        <Button
-          title="Retry"
-          onPress={fetchProducts}
-          buttonStyle={styles.retryButton}
-          titleStyle={styles.retryButtonText}
-          icon={
-            <Icon
-              name="sync"
-              type="font-awesome"
-              color="#fff"
-              containerStyle={{ marginRight: 8 }}
-            />
-          }
+  const renderCartItem = ({ item }) => (
+    <View style={styles.cartItem}>
+      <View style={styles.cartItemInfo}>
+        <Text style={styles.cartItemName}>{item.name}</Text>
+        <TextInput
+          style={styles.cartItemPrice}
+          value={item.price.toString()}
+          onChangeText={(text) => {
+            const num = parseFloat(text) || 0;
+            updateCartItem(item.product_id, 'price', Math.max(0, num));
+          }}
+          keyboardType="numeric"
         />
       </View>
-    );
-  }
-
- return (
-    <View style={styles.flexContainer}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Icon
-          name="shopping-cart"
-          type="font-awesome"
-          size={24}
-          color="#fff"
-          containerStyle={{ marginRight: 10 }}
+      <View style={styles.cartItemControls}>
+        <TouchableOpacity 
+          onPress={() => updateCartItem(item.product_id, 'quantity', Math.max(1, item.quantity - 1))}
+          style={styles.quantityButton}
+        >
+          <Icon name="remove" size={20} color="#4A90E2" />
+        </TouchableOpacity>
+        <TextInput
+          style={styles.quantityInput}
+          value={item.quantity.toString()}
+          onChangeText={(text) => {
+            const num = parseInt(text) || 1;
+            updateCartItem(item.product_id, 'quantity', Math.min(num, item.maxQuantity));
+          }}
+          keyboardType="numeric"
         />
-        <Text style={styles.headerTitle}>Product Sales</Text>
+        <TouchableOpacity 
+          onPress={() => updateCartItem(item.product_id, 'quantity', Math.min(item.quantity + 1, item.maxQuantity))}
+          style={styles.quantityButton}
+        >
+          <Icon name="add" size={20} color="#4A90E2" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          onPress={() => removeFromCart(item.product_id)}
+          style={styles.removeButton}
+        >
+          <Icon name="delete" size={20} color="#e74c3c" />
+        </TouchableOpacity>
       </View>
+    </View>
+  );
 
-      {!selectedProduct ? (
-        <View style={styles.productListContainer}>
-          <Text style={styles.sectionTitle}>Select a Product to Sell</Text>
-          
-          {/* Category Filter */}
-          <View style={styles.categoryContainer}>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.categoryScrollContent}
-            >
-              {categories.map((category, index) => (
-                <Button
-                  key={index}
-                  title={category}
-                  onPress={() => setSelectedCategory(category)}
-                  buttonStyle={[
-                    styles.categoryButton,
-                    selectedCategory === category && styles.selectedCategoryButton
-                  ]}
-                  titleStyle={[
-                    styles.categoryButtonText,
-                    selectedCategory === category && styles.selectedCategoryButtonText
-                  ]}
-                />
-              ))}
-            </ScrollView>
-          </View>
-          
-          {/* Search Input */}
-          <Input
-            placeholder="Search products by name..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            leftIcon={{
-              type: 'font-awesome',
-              name: 'search',
-              color: '#2980b9',
-            }}
-            containerStyle={styles.searchBarContainer}
-            inputContainerStyle={styles.searchBarInputContainer}
+  const getFilteredProducts = () => {
+    let filtered = [...products];
+    
+    // Apply category filter
+    if (selectedCategory !== 'All') {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+    
+    // Apply search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(product => 
+        product.name.toLowerCase().includes(query) ||
+        (product.description && product.description.toLowerCase().includes(query))
+      );
+    }
+    
+    return filtered;
+  };
+
+  const renderPaymentMethod = () => (
+    <View style={{marginBottom: 20}}>
+      <Text style={styles.sectionTitle}>Payment Method</Text>
+      <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
+        <TouchableOpacity 
+          style={[styles.paymentMethodButton, paymentMethod === 'cash' && styles.selectedPaymentMethod]}
+          onPress={() => setPaymentMethod('cash')}
+        >
+          <Text style={styles.paymentMethodText}>Cash</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.paymentMethodButton, paymentMethod === 'bank' && styles.selectedPaymentMethod]}
+          onPress={() => setPaymentMethod('bank')}
+        >
+          <Text style={styles.paymentMethodText}>Bank</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.paymentMethodButton, paymentMethod === 'credit' && styles.selectedPaymentMethod]}
+          onPress={() => setPaymentMethod('credit')}
+        >
+          <Text style={styles.paymentMethodText}>Credit</Text>
+        </TouchableOpacity>
+      </View>
+      
+      {paymentMethod === 'bank' && (
+        <View style={{marginTop: 15, marginBottom: 10}}>
+          <Text style={styles.sectionSubtitle}>Select Bank</Text>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bankScrollContainer}
+          >
+            {bankOptions.map(bank => (
+              <TouchableOpacity
+                key={bank}
+                style={[
+                  styles.bankOption,
+                  selectedBank === bank && styles.selectedBankOption
+                ]}
+                onPress={() => setSelectedBank(bank)}
+              >
+                <Text style={[
+                  styles.bankOptionText,
+                  selectedBank === bank && styles.selectedBankOptionText
+                ]}>
+                  {bank}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+      
+      {paymentMethod === 'credit' && (
+        <View style={styles.creditContainer}>
+          <Text style={styles.creditTitle}>Credit Payment Details</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Customer Name"
+            value={customer}
+            onChangeText={setCustomer}
+          />
+          <TextInput
+            style={[styles.input, {marginTop: 10}]}
+            placeholder="Unpaid Amount"
+            value={unpaidAmount}
+            onChangeText={setUnpaidAmount}
+            keyboardType="numeric"
           />
           
-          {/* Product List */}
-          {filteredProducts.length === 0 && products.length > 0 ? (
-            <View style={styles.centered}>
-              <Text style={styles.noProductsText}>No products found matching your search.</Text>
+          {parseFloat(unpaidAmount || 0) > 0 && (
+            <View style={styles.paidAmountSection}>
+              <Text style={styles.paidAmountTitle}>Payment for Paid Amount</Text>
+              <Text style={styles.sectionSubtitle}>Select payment method for the paid portion</Text>
+              <View style={{flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
+                <TouchableOpacity 
+                  style={[styles.paymentMethodButton, secondaryPaymentMethod === 'cash' && styles.selectedPaymentMethod]}
+                  onPress={() => setSecondaryPaymentMethod('cash')}
+                >
+                  <Text style={styles.paymentMethodText}>Cash</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.paymentMethodButton, secondaryPaymentMethod === 'bank' && styles.selectedPaymentMethod]}
+                  onPress={() => setSecondaryPaymentMethod('bank')}
+                >
+                  <Text style={styles.paymentMethodText}>Bank</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {secondaryPaymentMethod === 'bank' && (
+                <View style={{marginTop: 10}}>
+                  <Text style={styles.sectionSubtitle}>Select Bank for Paid Amount</Text>
+                  <ScrollView 
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.bankScrollContainer}
+                  >
+                    {bankOptions.map(bank => (
+                      <TouchableOpacity
+                        key={bank}
+                        style={[
+                          styles.bankOption,
+                          secondarySelectedBank === bank && styles.selectedBankOption
+                        ]}
+                        onPress={() => setSecondarySelectedBank(bank)}
+                      >
+                        <Text style={styles.bankOptionText}>{bank}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </View>
-          ) : filteredProducts.length === 0 && products.length === 0 ? (
-            <View style={styles.centered}>
-              <Text style={styles.noProductsText}>
-                No products available for sale
-              </Text>
+          )}
+        </View>
+      )}
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search products..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+        <TouchableOpacity 
+          style={styles.searchButton}
+          onPress={() => {
+            // Re-fetch products to ensure we have latest data
+            fetchProducts();
+          }}
+        >
+          <Icon name="search" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryScroll}
+      >
+        {categories.map(category => (
+          <TouchableOpacity
+            key={category}
+            style={[
+              styles.categoryButton,
+              selectedCategory === category && styles.selectedCategoryButton
+            ]}
+            onPress={() => setSelectedCategory(category)}
+          >
+            <Text style={[
+              styles.categoryButtonText,
+              selectedCategory === category && styles.selectedCategoryButtonText
+            ]}>
+              {category}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Cart Section at Top */}
+        <View style={styles.cartSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Current Sale</Text>
+            <Text style={styles.itemCount}>{cart.length} {cart.length === 1 ? 'item' : 'items'}</Text>
+          </View>
+          
+          {cart.length === 0 ? (
+            <View style={styles.emptyCart}>
+              <Icon name="shopping-cart" size={40} color="#ccc" />
+              <Text style={styles.emptyCartText}>Your cart is empty</Text>
             </View>
           ) : (
+            <View style={styles.cartItemsContainer}>
+              <FlatList
+                data={cart}
+                renderItem={renderCartItem}
+                keyExtractor={(item) => item.product_id.toString()}
+                scrollEnabled={false}
+              />
+              <View style={styles.totalContainer}>
+                <Text style={styles.totalLabel}>Total:</Text>
+                <Text style={styles.totalAmount}>{calculateTotal()} ETB</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Payment Method */}
+        {renderPaymentMethod()}
+
+        {/* Products Section */}
+        <View style={styles.productsSection}>
+          <Text style={styles.sectionTitle}>Available Products</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#4A90E2" />
+          ) : networkError ? (
+            <Text style={styles.errorText}>Network Error. Please try again.</Text>
+          ) : (
             <FlatList
-              data={filteredProducts}
+              data={getFilteredProducts()}
+              renderItem={renderProduct}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={renderProductItem}
-              contentContainerStyle={styles.list}
-              nestedScrollEnabled={true}
-              removeClippedSubviews={false}
-              keyboardShouldPersistTaps="handled"
-              style={{ flex: 1 }}
+              numColumns={2}
+              columnWrapperStyle={styles.productGrid}
+              scrollEnabled={false}
             />
           )}
         </View>
-      ) : (
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <KeyboardAvoidingView
-            style={styles.saleFormContainer}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={90}
-          >
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              keyboardDismissMode="on-drag"
-            >
-              {/* Selected Product Card */}
-              <Card containerStyle={styles.selectedProductCard}>
-                <View style={styles.cardHeader}>
-                  <Icon
-                    name="tag"
-                    type="font-awesome"
-                    size={22}
-                    color="#27ae60"
-                    containerStyle={{ marginRight: 8 }}
-                  />
-                  <Text style={styles.cardTitle}>{selectedProduct.name}</Text>
-                </View>
-                <Card.Divider />
-                <Text style={styles.selectedProductInfo}>
-                  Available: {selectedProduct.quantity} units
-                </Text>
-                <Text style={styles.selectedProductInfo}>
-                  Suggested Price: ${selectedProduct.selling_price}
-                </Text>
-                {selectedProduct.category && (
-                  <Text style={styles.selectedProductInfo}>
-                    Category: {selectedProduct.category}
-                  </Text>
-                )}
-              </Card>
+      </ScrollView>
 
-              {/* Quantity and Price in Row */}
-              <View style={styles.rowContainer}>
-                <View style={styles.inputColumn}>
-                  <Input
-                    label="Quantity to Sell"
-                    placeholder="ብዛት"
-                    value={quantitySold}
-                    onChangeText={setQuantitySold}
-                    keyboardType="numeric"
-                    leftIcon={{
-                      type: 'font-awesome-5',
-                      name: 'warehouse',
-                      color: '#2980b9',
-                    }}
-                    returnKeyType="done"
-                    containerStyle={styles.inputField}
-                  />
-                </View>
-
-                <View style={styles.inputColumn}>
-                  <Input
-                    label="Price per Unit"
-                    placeholder="Enter price"
-                    value={soldPrice}
-                    onChangeText={setSoldPrice}
-                    keyboardType="numeric"
-                    leftIcon={{
-                      type: 'font-awesome-5',
-                      name: 'dollar-sign',
-                      color: '#2980b9',
-                    }}
-                    returnKeyType="done"
-                    containerStyle={styles.inputField}
-                  />
-                </View>
-              </View>
-
-              {/* Total Price Display */}
-              {quantitySold && soldPrice && (
-                <View style={styles.totalContainer}>
-                  <Text style={styles.totalText}>
-                    Total: ${calculateTotalPrice()}
-                  </Text>
-                </View>
-              )}
-
-              {/* Comment Input */}
-              <Input
-                label="Comment (Optional)"
-                placeholder="Enter any comments"
-                value={comment}
-                onChangeText={setComment}
-                multiline
-                leftIcon={{
-                  type: 'font-awesome',
-                  name: 'comment',
-                  color: '#2980b9',
-                }}
-                returnKeyType="default"
-                containerStyle={styles.inputField}
-              />
-
-              {/* Payment Method */}
-              <View style={styles.paymentContainer}>
-                <Text style={styles.paymentLabel}>Payment Method:</Text>
-                <ButtonGroup
-                  onPress={idx => {
-                    setPaymentIndex(idx);
-                    const methods = ['cash', 'credit', 'account_transfer'];
-                    setPaymentMethod(methods[idx]);
-                  }}
-                  selectedIndex={paymentIndex}
-                  buttons={['Cash(ጥሬ)', 'Credit(ዱቤ)', 'Bank(ባንክ)']}
-                  containerStyle={styles.paymentGroup}
-                  buttonStyle={styles.paymentGroupButton}
-                  selectedButtonStyle={styles.paymentGroupSelected}
-                  textStyle={styles.paymentGroupText}
-                />
-                
-                {/* Payment Details */}
-                {paymentMethod === 'account_transfer' && (
-                  <View style={styles.paymentDetails}>
-                    <Text style={styles.paymentSubLabel}>Select Bank:</Text>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.bankScrollView}
-                    >
-                      {['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'].map((bank) => (
-                        <Button
-                          key={bank}
-                          title={bank}
-                          onPress={() => setSelectedBank(bank)}
-                          buttonStyle={[
-                            styles.bankButton,
-                            selectedBank === bank && styles.selectedBankButton,
-                          ]}
-                          titleStyle={styles.bankButtonText}
-                          containerStyle={styles.bankButtonContainer}
-                        />
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
-
-                {paymentMethod === 'credit' && (
-                  <View style={styles.paymentDetails}>
-                    <View style={styles.creditRow}>
-                      <View style={[styles.creditInput, { flex: width > 500 ? 0.48 : 1 }]}>
-                        <Input
-                          label="Unpaid Amount"
-                          placeholder="Enter amount"
-                          value={unpaidAmount}
-                          onChangeText={setUnpaidAmount}
-                          keyboardType="numeric"
-                          containerStyle={styles.creditInputField}
-                        />
-                      </View>
-                      {width > 500 && <View style={{ width: 10 }} />}
-                      <View style={[styles.creditInput, { flex: width > 500 ? 0.48 : 1 }]}>
-                        <Input
-                          label="To Whom"
-                          placeholder="Customer name"
-                          value={toWhom}
-                          onChangeText={setToWhom}
-                          containerStyle={styles.creditInputField}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Action Buttons */}
-              <View style={styles.buttonContainer}>
-                <Button
-                  title="Complete Sale"
-                  onPress={handleSale}
-                  loading={processing}
-                  disabled={processing}
-                  buttonStyle={styles.saleButton}
-                  titleStyle={styles.saleButtonText}
-                  icon={
-                    <Icon
-                      name="check-circle"
-                      type="font-awesome-5"
-                      color="#fff"
-                      containerStyle={{ marginRight: 6 }}
-                    />
-                  }
-                />
-                <Button
-                  title="Cancel"
-                  onPress={() => setSelectedProduct(null)}
-                  buttonStyle={styles.cancelButton}
-                  titleStyle={styles.cancelButtonText}
-                />
-              </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
-      )}
+      {/* Fixed Action Buttons at Bottom */}
+      <View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.clearButton]}
+          onPress={() => setCart([])}
+        >
+          <Icon name="delete" size={20} color="#e74c3c" />
+          <Text style={styles.clearButtonText}>Clear</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.actionButton, styles.checkoutButton, (processing || cart.length === 0) && styles.disabledButton]}
+          onPress={handleCheckout}
+          disabled={processing || cart.length === 0}
+        >
+          {processing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Icon name="shopping-cart" size={20} color="#fff" />
+              <Text style={styles.checkoutButtonText}>Checkout</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  flexContainer: {
+  container: {
     flex: 1,
-    backgroundColor: '#ecf0f1',
+    backgroundColor: '#f5f7fa',
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#ecf0f1',
-    padding: 20,
+  scrollContainer: {
+    padding: 16,
+    paddingBottom: 100, // Space for fixed footer
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#7f8c8d',
-  },
-  errorText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#e74c3c',
-    marginBottom: 10,
-  },
-  errorDescription: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: '#8B4513',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 25,
-  },
-  retryButtonText: {
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  header: {
+  sectionHeader: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#2980b9',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    elevation: 4,
+    marginBottom: 12,
+  },
+  itemCount: {
+    backgroundColor: '#4A90E2',
+    color: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+    fontSize: 14,
+  },
+  cartSection: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    elevation: 3,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  productListContainer: {
-    flex: 1,
-    minHeight: 1,
-  },
-  saleFormContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 16,
-    paddingBottom: 30,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    margin: 16,
-    color: '#2c3e50',
-  },
-  list: {
-    paddingHorizontal: 12,
-    paddingBottom: 20,
-  },
-  card: {
-    borderRadius: 10,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  cardInner: {},
-  cardHeader: {
-    flexDirection: 'row',
+  emptyCart: {
     alignItems: 'center',
+    padding: 20,
+  },
+  emptyCartText: {
+    color: '#999',
+    marginTop: 10,
+    fontSize: 16,
+  },
+  cartItemsContainer: {
+    marginTop: 10,
+  },
+  productsSection: {
+    marginBottom: 20,
+  },
+  productCard: {
+    flex: 1,
+    margin: 6,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    overflow: 'hidden',
+  },
+  productContent: {
+    padding: 12,
+  },
+  productName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
     marginBottom: 8,
+    height: 40, // Fixed height for 2 lines
   },
-  cardTitle: {
-    fontSize: 20,
+  productPrice: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#4A90E2',
+    marginBottom: 4,
+  },
+  productStock: {
+    fontSize: 13,
+    color: '#666',
+  },
+  productGrid: {
+    justifyContent: 'space-between',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    elevation: 5,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 8,
+    marginHorizontal: 6,
+  },
+  clearButton: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+  },
+  clearButtonText: {
+    color: '#e74c3c',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  checkoutButton: {
+    backgroundColor: '#4A90E2',
+  },
+  checkoutButtonText: {
+    color: '#fff',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  cartItem: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cartItemInfo: {
+    flex: 1,
+  },
+  cartItemName: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#2c3e50',
   },
-  productInfo: {
-    marginBottom: 12,
+  cartItemPrice: {
+    fontSize: 14,
+    color: '#4A90E2',
+    marginTop: 4,
+    height: 40,
+    borderColor: '#ccc',
+    borderWidth: 1,
+    borderRadius: 5,
+    padding: 10,
+    width: 100,
   },
-  infoRow: {
+  cartItemControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
   },
-  iconSpacing: {
-    width: 24,
-    alignItems: 'center',
+  quantityButton: {
+    padding: 8,
   },
-  label: {
+  quantityInput: {
+    width: 40,
+    textAlign: 'center',
     fontSize: 16,
     fontWeight: '600',
-    color: '#34495e',
-    width: '30%',
   },
-  value: {
-    fontSize: 16,
-    color: '#2c3e50',
-    flex: 1,
-    flexWrap: 'wrap',
-  },
-  selectButton: {
-    backgroundColor: '#2980b9',
-    borderRadius: 6,
-    paddingVertical: 10,
-  },
-  selectedButton: {
-    backgroundColor: '#27ae60',
-  },
-  selectButtonText: {
-    fontWeight: 'bold',
-  },
-  noProductsText: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
-    marginTop: 20,
-  },
-  selectedProductCard: {
-    borderRadius: 10,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  selectedProductInfo: {
-    fontSize: 16,
-    color: '#7f8c8d',
-    marginBottom: 6,
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputInner: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#bdc3c7',
+  removeButton: {
+    padding: 8,
+    marginLeft: 10,
   },
   totalContainer: {
-    backgroundColor: '#ecf0f1',
-    padding: 12,
-    borderRadius: 8,
-    marginVertical: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  totalText: {
+  totalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#2c3e50',
-    textAlign: 'center',
-  },
-  saleFormOuter: {
-    flex: 1,
-    backgroundColor: '#ecf0f1',
-  },
-  paymentContainer: {
-    marginVertical: 12,
-    backgroundColor: 'transparent',
-  },
-  paymentLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '600',
     color: '#2c3e50',
   },
-  paymentSubLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    color: '#34495e',
+  totalAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#4A90E2',
   },
-  paymentGroup: {
+  addToCartButton: {
+    backgroundColor: '#4A90E2',
+    padding: 10,
     borderRadius: 8,
-    height: 40,
-    marginBottom: 10,
-  },
-  paymentGroupButton: {
-    borderRadius: 8,
-  },
-  paymentGroupSelected: {
-    backgroundColor: '#27ae60',
-  },
-  paymentGroupText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  paymentDetails: {
     marginTop: 10,
+    alignItems: 'center',
+  },
+  addToCartText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  searchInput: {
+    flex: 1,
+    height: 40,
+    fontSize: 16,
     padding: 10,
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
+    marginRight: 10,
   },
-  bankScrollView: {
-    marginBottom: 10,
-  },
-  bankButtonContainer: {
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  bankButton: {
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  selectedBankButton: {
-    backgroundColor: '#2980b9',
-  },
-  bankButtonText: {
-    color: '#2c3e50',
-    fontSize: 14,
-  },
-  creditRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
-  },
-  creditInput: {
-    marginBottom: 10,
-  },
-  creditInputField: {
-    marginBottom: 0,
-    paddingHorizontal: 0,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  cancelButton: {
-    backgroundColor: '#95a5a6',
-    borderRadius: 6,
-    paddingVertical: 12,
-    flex: 0.45,
-  },
-  cancelButtonText: {
-    fontWeight: 'bold',
-  },
-  saleButton: {
-    backgroundColor: '#27ae60',
-    borderRadius: 6,
-    paddingVertical: 12,
-    flex: 0.45,
-  },
-  saleButtonText: {
-    fontWeight: 'bold',
-  },
-  rowContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 15,
-  },
-  inputColumn: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  inputField: {
-    marginBottom: 0,
-    paddingHorizontal: 0,
-  },
-  searchBarContainer: {
-    maxWidth: '90%',
-    alignSelf: 'center',
-    marginHorizontal: 16,
-    marginBottom: 10,
-    marginTop: 5,
-  },
-  searchBarInputContainer: {
+  searchButton: {
+    backgroundColor: '#4A90E2',
+    padding: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#bdc3c7',
-    paddingHorizontal: 10,
-  },
-  // Category filter styles
-  categoryContainer: {
-    height: 50,
-    marginBottom: 10,
-  },
-  categoryScrollContent: {
-    paddingHorizontal: 10,
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  categoryScroll: {
+    padding: 16,
+    backgroundColor: '#fff',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
   categoryButton: {
-    marginHorizontal: 4,
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 15,
-    backgroundColor: '#e0e0e0',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 100,
+    height: 40,
   },
   selectedCategoryButton: {
-    backgroundColor: '#2980b9',
+    backgroundColor: '#4A90E2',
   },
   categoryButtonText: {
-    fontSize: 14,
-    color: '#2c3e50',
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textTransform: 'capitalize',
   },
   selectedCategoryButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  paymentMethodButton: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 100,
+    height: 40,
+  },
+  selectedPaymentMethod: {
+    backgroundColor: '#4A90E2',
+  },
+  paymentMethodText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    includeFontPadding: false,
+    textTransform: 'capitalize',
+  },
+  input: {
+    height: 40,
+    fontSize: 16,
+    padding: 10,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  bankScrollContainer: {
+    paddingHorizontal: 15,
+    paddingBottom: 5,
+  },
+  bankOption: {
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 40,
+    minWidth: 90,
+  },
+  selectedBankOption: {
+    backgroundColor: '#4A90E2',
+  },
+  bankOptionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  selectedBankOptionText: {
+    color: '#fff',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#777',
+    marginBottom: 8,
+  },
+  // New styles for credit section
+  creditContainer: {
+    backgroundColor: '#f0f7ff',
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 15,
+  },
+  creditTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 10,
+  },
+  paidAmountSection: {
+    backgroundColor: '#e6f2ff',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 10,
+  },
+  paidAmountTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4A90E2',
+    marginBottom: 5,
   },
 });
 
