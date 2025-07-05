@@ -7,6 +7,10 @@ import { useAuth } from '../context/AuthContext';
 // Auth Screens
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import ProductOrderScreen from '../screens/ProductOrderScreen';
+import ProductSelectionScreen from '../screens/ProductSelectionScreen';
+import OrderHistoryScreen from '../screens/OrderHistoryScreen';
+import PayOrderScreen from '../screens/PayOrderScreen';
 
 // App Screens (add your main app screens here)
 import HomeScreen from '../screens/HomeScreen';
@@ -17,7 +21,6 @@ import EditProductScreen from '../screens/EditProductScreen';
 import SalesScreen from '../screens/SalesScreen';
 import SpendingScreen from '../screens/SpendingScreen'
 import ReportsScreen from '../screens/ReportsScreen';
-import DetailedReportsScreen from '../screens/DetailedReportsScreen';
 import AdminUserManagement from '../screens/auth/AdminUserManagement';
 import AdminVehicleManagement from '../screens/auth/AdminVehicleManagement';
 import CarWashScreen from '../screens/auth/CarwashScreen';
@@ -48,11 +51,13 @@ const AppStack = () => {
       <Stack.Screen name="Spending" component={SpendingScreen} options={{ title: 'Record Spending' }} />
       <Stack.Screen name="Reports" component={ReportsScreen} options={{ title: 'Analytics Dashboard' }} />
       <Stack.Screen name="AdminUserManagement" component={AdminUserManagement} options={{ title: 'Admin User Management' }} />
-      <Stack.Screen name="DetailedReports" component={DetailedReportsScreen} options={{ title: 'Detailed Reports' }} />
       <Stack.Screen name="AdminVehicleManagement" component={AdminVehicleManagement} options={{ title: 'Admin Vehicle Management' }} />
       <Stack.Screen name="CarWashScreen" component={CarWashScreen} options={{ title: 'Car Wash Screen' }} />
       <Stack.Screen name="CommissionReportScreen" component={CommissionReportScreen} options={{ title: 'Commission Report' }} />
-            
+            <Stack.Screen name="ProductOrder" component={ProductOrderScreen} />
+<Stack.Screen name="ProductSelection" component={ProductSelectionScreen} />
+<Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+<Stack.Screen name="PayOrder" component={PayOrderScreen} />
             <Stack.Screen name="CarWashSpendingScreen" component={CarWashSpendingScreen} options={{ title: 'Record Car Wash Spending' }} />
             <Stack.Screen name="BankDeposit" component={BankDepositScreen} options={{ title: 'Bank Deposit' }} />
 

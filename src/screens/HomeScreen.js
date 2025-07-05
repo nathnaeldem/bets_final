@@ -222,6 +222,22 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.buttonGroup}>
             {user?.role === 'admin' ? (
               <>
+                {/* ADDED: Product Ordering Buttons */}
+                <Button
+                  title="Place Product Order"
+                  buttonStyle={styles.orderButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={<MaterialIcons name="add-shopping-cart" size={22} color="white" style={styles.icon} />}
+                  onPress={() => navigation.navigate('ProductOrder')}
+                />
+                <Button
+                  title="Order History"
+                  buttonStyle={styles.orderHistoryButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={<MaterialIcons name="history" size={22} color="white" style={styles.icon} />}
+                  onPress={() => navigation.navigate('OrderHistory')}
+                />
+                
                 <Button
                   title="Manage Products"
                   buttonStyle={styles.primaryButton}
@@ -571,6 +587,21 @@ const styles = StyleSheet.create({
   buttonGroup: {
     gap: 16,
   },
+  // NEW BUTTON STYLES
+  orderButton: {
+    backgroundColor: '#27ae60',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  orderHistoryButton: {
+    backgroundColor: '#16a085',
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  
+  // EXISTING BUTTON STYLES
   primaryButton: {
     backgroundColor: '#0984e3',
     borderRadius: 12,
@@ -725,8 +756,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     padding: 10,
-  }
-  ,
+  },
   paymentLabel: {
     fontSize: 16,
     marginBottom: 8,

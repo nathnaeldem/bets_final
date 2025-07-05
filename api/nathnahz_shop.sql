@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jul 02, 2025 at 08:45 AM
+-- Generation Time: Jul 05, 2025 at 08:46 AM
 -- Server version: 10.6.16-MariaDB-cll-lve
 -- PHP Version: 7.4.33
 
@@ -25,103 +25,28 @@ SET time_zone = "+00:00";
 -- --------------------------------------------------------
 
 --
--- Table structure for table `ip_blocks`
+-- Table structure for table `bank_deposits`
 --
 
-CREATE TABLE `ip_blocks` (
+CREATE TABLE `bank_deposits` (
   `id` int(11) NOT NULL,
-  `ip_address` varchar(45) NOT NULL,
-  `organization_id` int(11) DEFAULT NULL,
-  `blocked_until` datetime NOT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `login_attempts`
---
-
-CREATE TABLE `login_attempts` (
-  `id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
-  `success` tinyint(1) NOT NULL DEFAULT 0,
-  `ip_address` varchar(45) NOT NULL,
-  `user_agent` mediumtext DEFAULT NULL,
-  `organization_id` int(11) DEFAULT NULL,
-  `attempt_time` timestamp NULL DEFAULT current_timestamp()
+  `user_id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `bank_name` enum('CBE','Awash','Dashen','Abyssinia','Birhan','Telebirr') NOT NULL,
+  `account_number` varchar(50) DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `deposit_date` date NOT NULL,
+  `reference_number` varchar(50) DEFAULT NULL,
+  `comment` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `login_attempts`
+-- Dumping data for table `bank_deposits`
 --
 
-INSERT INTO `login_attempts` (`id`, `username`, `success`, `ip_address`, `user_agent`, `organization_id`, `attempt_time`) VALUES
-(1, 'betse', 1, '102.208.97.130', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', 1, '2025-06-10 13:34:51'),
-(2, 'bire', 1, '102.208.96.139', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', 1, '2025-06-10 14:00:33'),
-(3, 'betse', 0, '102.208.97.71', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', NULL, '2025-06-12 07:41:19'),
-(50, 'bire', 1, '196.190.61.128', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-21 10:49:06'),
-(51, 'bire', 1, '196.190.61.128', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-21 13:26:22'),
-(52, 'bire', 1, '196.190.61.128', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-21 18:33:19'),
-(53, 'bire', 1, '196.190.61.128', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-21 18:34:29'),
-(54, 'bire', 1, '102.213.69.142', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-22 07:16:01'),
-(55, 'bire', 1, '169.150.196.154', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-22 09:28:02'),
-(56, 'bire', 1, '169.150.196.154', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 Edg/137.0.0.0', 1, '2025-06-22 09:30:20'),
-(57, 'bire', 1, '102.213.69.142', 'okhttp/4.9.2', 1, '2025-06-22 13:06:48'),
-(58, 'sanbu', 1, '102.213.69.142', 'okhttp/4.9.2', 1, '2025-06-22 13:20:07'),
-(59, 'bire', 1, '102.213.69.142', 'okhttp/4.9.2', 1, '2025-06-22 13:22:10'),
-(60, 'bire', 1, '102.213.69.203', NULL, 1, '2025-06-23 11:40:12'),
-(61, 'bire', 1, '102.213.69.203', NULL, 1, '2025-06-23 11:45:44'),
-(62, 'bire', 1, '102.213.69.203', NULL, 1, '2025-06-23 11:48:45'),
-(63, 'bire', 1, '102.213.69.203', 'okhttp/4.12.0', 1, '2025-06-23 12:01:43'),
-(64, 'habte', 1, '102.213.69.196', 'okhttp/4.12.0', 2, '2025-06-23 14:42:39'),
-(65, 'temesgen', 1, '102.213.69.196', 'okhttp/4.12.0', 2, '2025-06-23 15:05:47'),
-(66, 'habte', 1, '102.213.69.196', 'okhttp/4.12.0', 2, '2025-06-23 15:13:06'),
-(67, 'bire', 1, '102.213.68.147', NULL, 1, '2025-06-24 11:30:24'),
-(68, 'bire', 1, '102.213.68.147', NULL, 1, '2025-06-24 15:07:56'),
-(69, 'bire', 1, '102.213.68.147', 'okhttp/4.9.2', 1, '2025-06-24 15:31:54'),
-(70, 'bire', 1, '196.188.254.39', 'okhttp/4.9.2', 1, '2025-06-24 16:13:27'),
-(71, 'bire', 1, '196.188.253.153', NULL, 1, '2025-06-25 12:01:07'),
-(72, 'bire', 1, '102.208.97.109', NULL, 1, '2025-06-25 12:08:31'),
-(73, 'sanbu', 1, '196.188.253.229', 'okhttp/4.9.2', 1, '2025-06-25 12:33:38'),
-(74, 'mekdi1234', 0, '196.190.61.194', 'okhttp/4.9.2', NULL, '2025-06-25 16:51:42'),
-(75, 'mekdi1234', 0, '196.190.61.194', 'okhttp/4.9.2', NULL, '2025-06-25 16:51:53'),
-(76, 'sanbu', 1, '196.190.61.123', 'okhttp/4.9.2', 1, '2025-06-26 09:16:27'),
-(77, 'bire', 1, '196.190.61.123', 'okhttp/4.9.2', 1, '2025-06-26 09:17:00'),
-(78, 'bire', 1, '102.218.50.43', NULL, 1, '2025-06-26 12:25:57'),
-(79, 'bire', 1, '196.190.61.123', 'okhttp/4.9.2', 1, '2025-06-26 12:36:29'),
-(80, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:44:52'),
-(81, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:44:59'),
-(82, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:45:05'),
-(83, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:45:26'),
-(84, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:46:31'),
-(85, 'bire', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:46:44'),
-(86, 'sanbu', 1, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', 1, '2025-06-26 13:46:59'),
-(87, 'betse', 0, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-26 13:47:12'),
-(88, 'bire', 0, '102.213.69.10', NULL, NULL, '2025-06-26 13:47:38'),
-(89, 'betse', 1, '102.218.50.216', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', 1, '2025-06-26 13:48:38'),
-(90, 'betse', 1, '102.213.69.10', NULL, 1, '2025-06-26 13:50:36'),
-(91, 'bire', 0, '102.213.69.10', NULL, NULL, '2025-06-26 14:45:58'),
-(92, 'betse', 1, '102.213.69.10', NULL, 1, '2025-06-26 14:46:05'),
-(93, 'betse', 1, '102.213.69.10', NULL, 1, '2025-06-26 14:50:43'),
-(94, 'betse', 1, '196.190.61.123', NULL, 1, '2025-06-26 15:35:23'),
-(95, 'habte', 0, '102.213.68.161', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', NULL, '2025-06-27 09:14:06'),
-(96, 'betse', 1, '102.213.68.161', 'Expo/1017697 CFNetwork/1333.0.4 Darwin/21.5.0', 1, '2025-06-27 09:14:19'),
-(97, 'sanbu', 0, '102.213.69.76', NULL, 1, '2025-06-27 10:32:27'),
-(98, 'sanbu', 0, '102.213.69.76', NULL, 1, '2025-06-27 10:32:35'),
-(99, 'betse', 1, '102.213.69.185', NULL, 1, '2025-06-27 12:53:14'),
-(100, 'betse', 1, '196.188.254.167', NULL, 1, '2025-06-27 17:59:43'),
-(101, 'betse', 1, '102.213.69.106', 'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36 Edg/137.0.0.0', 1, '2025-06-27 19:10:49'),
-(102, 'betse', 1, '196.191.223.16', NULL, 1, '2025-06-28 18:50:24'),
-(103, 'bire', 0, '102.213.68.94', NULL, NULL, '2025-06-28 18:54:53'),
-(104, 'betse', 1, '102.213.68.161', NULL, 1, '2025-06-29 08:04:21'),
-(105, 'betse', 1, '102.213.68.161', NULL, 1, '2025-06-29 08:04:21'),
-(106, 'betse', 1, '102.213.68.161', NULL, 1, '2025-06-29 08:17:57'),
-(107, 'bire', 0, '102.208.96.169', NULL, NULL, '2025-06-29 10:00:36'),
-(108, 'betse', 1, '102.208.96.169', NULL, 1, '2025-06-29 10:00:45'),
-(109, 'betse', 1, '102.208.96.169', NULL, 1, '2025-06-29 10:00:45'),
-(110, 'betse', 1, '196.188.252.158', NULL, 1, '2025-06-29 19:20:35'),
-(111, 'betse', 1, '196.188.253.133', NULL, 1, '2025-07-01 21:47:22');
+INSERT INTO `bank_deposits` (`id`, `user_id`, `organization_id`, `bank_name`, `account_number`, `amount`, `deposit_date`, `reference_number`, `comment`, `created_at`) VALUES
+(1, 1, 1, 'Awash', '29', '50000.00', '2025-07-02', '', '', '2025-07-02 12:57:28');
 
 -- --------------------------------------------------------
 
@@ -147,21 +72,6 @@ INSERT INTO `organizations` (`id`, `name`, `created_at`, `owner_user_id`) VALUES
 -- --------------------------------------------------------
 
 --
--- Table structure for table `password_reset_tokens`
---
-
-CREATE TABLE `password_reset_tokens` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `token` varchar(64) NOT NULL,
-  `token_hash` varchar(255) NOT NULL,
-  `expiry` datetime NOT NULL,
-  `created_at` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `products`
 --
 
@@ -182,7 +92,7 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `name`, `description`, `category`, `import_price`, `selling_price`, `organization_id`, `created_at`, `updated_at`) VALUES
-(11, 'Battery 60Am', 'Gs', 'battery', '11000.00', '11500.00', 1, '2025-06-14 14:50:54', '2025-06-18 11:55:46'),
+(11, 'Battery 60Am', 'Gs', 'battery', '11000.50', '11500.00', 1, '2025-06-14 14:50:54', '2025-07-05 10:05:19'),
 (12, 'Battery 90Am', 'Gs', 'battery', '15500.00', '16000.00', 1, '2025-06-14 14:51:51', '2025-06-18 11:55:46'),
 (13, 'Battery 35Am', 'Kontem', 'battery', '7000.00', '7700.00', 1, '2025-06-14 14:53:33', '2025-06-18 11:55:46'),
 (14, 'Battery 150Am', 'Gs', 'battery', '28000.00', '30000.00', 1, '2025-06-14 18:31:09', '2025-06-21 10:49:41'),
@@ -401,7 +311,7 @@ CREATE TABLE `product_inventory` (
   `id` int(11) NOT NULL,
   `product_id` int(11) NOT NULL,
   `quantity` int(11) NOT NULL DEFAULT 0,
-  `status` enum('ordered','in_store','sold') NOT NULL DEFAULT 'ordered',
+  `status` enum('ordered','in_store') NOT NULL DEFAULT 'ordered',
   `status_changed_at` timestamp NULL DEFAULT current_timestamp(),
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -411,10 +321,9 @@ CREATE TABLE `product_inventory` (
 --
 
 INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `status_changed_at`, `created_at`) VALUES
-(11, 11, 3, 'in_store', '2025-07-02 01:06:59', '2025-06-14 14:50:54'),
-(12, 12, 1, 'sold', '2025-06-26 19:15:49', '2025-06-14 14:51:51'),
+(12, 12, 3, 'in_store', '2025-07-02 17:35:02', '2025-06-14 14:51:51'),
 (13, 13, 1, 'in_store', '2025-07-01 14:49:35', '2025-06-14 14:53:33'),
-(14, 14, 0, 'sold', '2025-06-30 17:47:56', '2025-06-14 18:31:09'),
+(14, 14, 0, 'in_store', '2025-06-30 17:47:56', '2025-06-14 18:31:09'),
 (16, 16, 0, 'in_store', '2025-06-24 17:11:05', '2025-06-14 18:47:36'),
 (17, 17, 0, 'in_store', '2025-06-24 17:13:10', '2025-06-14 18:48:44'),
 (18, 18, 0, 'in_store', '2025-06-26 19:58:53', '2025-06-14 18:50:07'),
@@ -424,7 +333,7 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (23, 23, 0, 'in_store', '2025-06-26 20:09:39', '2025-06-14 19:03:50'),
 (24, 24, 0, 'in_store', '2025-06-26 20:10:40', '2025-06-14 19:06:19'),
 (25, 25, 1, 'in_store', '2025-06-26 20:11:44', '2025-06-14 19:08:07'),
-(26, 26, 0, 'sold', '2025-07-01 12:47:47', '2025-06-14 19:14:49'),
+(26, 26, 0, 'in_store', '2025-07-01 12:47:47', '2025-06-14 19:14:49'),
 (27, 27, 0, 'in_store', '2025-06-26 20:24:55', '2025-06-14 19:17:02'),
 (28, 28, 0, 'in_store', '2025-06-26 20:25:39', '2025-06-14 19:18:36'),
 (31, 31, 7, 'in_store', '2025-06-30 17:29:14', '2025-06-15 14:09:17'),
@@ -451,7 +360,7 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (58, 58, 5, 'in_store', '2025-06-26 21:17:24', '2025-06-17 18:03:15'),
 (59, 59, 6, 'in_store', '2025-06-28 15:51:32', '2025-06-17 18:06:40'),
 (60, 60, 9, 'in_store', '2025-06-26 21:25:03', '2025-06-17 18:10:25'),
-(61, 61, 0, 'sold', '2025-06-30 14:00:14', '2025-06-17 18:11:20'),
+(61, 61, 0, 'in_store', '2025-06-30 14:00:14', '2025-06-17 18:11:20'),
 (64, 64, 189, 'in_store', '2025-06-30 14:26:09', '2025-06-21 10:58:50'),
 (65, 65, 148, 'in_store', '2025-06-30 17:26:46', '2025-06-21 11:03:14'),
 (66, 66, 223, 'in_store', '2025-06-30 17:41:29', '2025-06-21 11:04:36'),
@@ -495,7 +404,7 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (110, 110, 19, 'in_store', '2025-06-26 16:48:59', '2025-06-21 20:14:31'),
 (111, 111, 1, 'in_store', '2025-07-01 12:47:47', '2025-06-21 20:20:00'),
 (112, 112, 18, 'in_store', '2025-06-26 16:51:13', '2025-06-21 20:21:56'),
-(113, 113, 0, 'sold', '2025-07-01 12:47:47', '2025-06-21 20:24:43'),
+(113, 113, 0, 'in_store', '2025-07-01 12:47:47', '2025-06-21 20:24:43'),
 (114, 114, 100, 'in_store', '2025-06-27 11:47:51', '2025-06-22 15:37:31'),
 (115, 115, 110, 'in_store', '2025-06-28 10:51:26', '2025-06-22 15:39:27'),
 (116, 116, 10, 'in_store', '2025-06-26 16:58:07', '2025-06-22 15:45:50'),
@@ -577,7 +486,7 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (208, 193, 5, 'in_store', '2025-06-28 15:01:52', '2025-06-26 21:58:36'),
 (209, 194, 2, 'in_store', '2025-06-26 22:06:48', '2025-06-26 22:06:48'),
 (210, 195, 6, 'in_store', '2025-06-26 22:08:26', '2025-06-26 22:08:26'),
-(211, 32, 0, 'sold', '2025-06-30 14:13:52', '2025-06-27 13:14:52'),
+(211, 32, 0, 'in_store', '2025-06-30 14:13:52', '2025-06-27 13:14:52'),
 (214, 196, 11, 'in_store', '2025-06-29 20:43:45', '2025-06-28 09:07:43'),
 (215, 197, 2, 'in_store', '2025-06-29 20:43:18', '2025-06-28 09:08:52'),
 (216, 198, 3, 'in_store', '2025-06-29 20:42:39', '2025-06-28 09:09:50'),
@@ -615,168 +524,47 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (250, 19, 23, 'in_store', '2025-06-30 14:32:46', '2025-06-28 21:30:43'),
 (251, 43, 23, 'in_store', '2025-06-28 21:36:44', '2025-06-28 21:36:44'),
 (252, 223, 10, 'in_store', '2025-07-02 07:45:19', '2025-07-02 07:45:19'),
-(253, 224, 2977, 'in_store', '2025-07-02 10:37:56', '2025-07-02 10:37:56'),
-(254, 225, 327, 'in_store', '2025-07-02 10:38:22', '2025-07-02 10:38:22'),
-(255, 12, 3, 'in_store', '2025-07-02 11:04:57', '2025-07-02 11:04:57'),
+(253, 224, 2975, 'in_store', '2025-07-02 10:37:56', '2025-07-02 10:37:56'),
+(254, 225, 325, 'in_store', '2025-07-02 10:38:22', '2025-07-02 10:38:22'),
+(255, 12, 3, 'in_store', '2025-07-02 17:35:02', '2025-07-02 11:04:57'),
 (256, 14, 2, 'in_store', '2025-07-02 11:06:08', '2025-07-02 11:06:08'),
 (257, 165, 9, 'in_store', '2025-07-02 11:27:19', '2025-07-02 11:27:19'),
 (258, 134, 2, 'in_store', '2025-07-02 11:38:43', '2025-07-02 11:38:43'),
-(259, 135, 2, 'in_store', '2025-07-02 11:43:59', '2025-07-02 11:43:59');
+(259, 135, 2, 'in_store', '2025-07-02 11:43:59', '2025-07-02 11:43:59'),
+(260, 11, 6, 'in_store', '2025-07-05 10:50:20', '2025-07-05 10:50:20');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `product_transactions`
+-- Table structure for table `product_orders`
 --
 
-CREATE TABLE `product_transactions` (
+CREATE TABLE `product_orders` (
   `id` int(11) NOT NULL,
-  `product_id` int(11) NOT NULL,
-  `quantity` int(11) NOT NULL,
-  `previous_status` enum('ordered','in_store','sold','new') NOT NULL,
-  `new_status` enum('ordered','in_store','sold') NOT NULL,
   `user_id` int(11) NOT NULL,
   `organization_id` int(11) NOT NULL,
-  `transaction_date` timestamp NULL DEFAULT current_timestamp(),
-  `comment` varchar(100) NOT NULL DEFAULT 'none',
-  `Sold_Price` int(100) NOT NULL DEFAULT 0,
-  `payment_method` enum('cash','credit','account_transfer') NOT NULL,
-  `bank_name` varchar(20) NOT NULL,
-  `unpaid_amount` int(20) NOT NULL
+  `product_id` int(11) NOT NULL,
+  `product_name` varchar(255) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `ordered_price` decimal(10,2) NOT NULL,
+  `selling_price` decimal(10,2) NOT NULL,
+  `payment_method` enum('bank','credit','mixed') NOT NULL,
+  `bank_name` varchar(50) DEFAULT NULL,
+  `paid_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `unpaid_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `status` enum('ordered','received') NOT NULL DEFAULT 'ordered',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `received_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `product_transactions`
+-- Dumping data for table `product_orders`
 --
 
-INSERT INTO `product_transactions` (`id`, `product_id`, `quantity`, `previous_status`, `new_status`, `user_id`, `organization_id`, `transaction_date`, `comment`, `Sold_Price`, `payment_method`, `bank_name`, `unpaid_amount`) VALUES
-(36, 76, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:05:46', '', 1200, 'cash', '', 0),
-(37, 66, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:07:08', '', 150, 'cash', '', 0),
-(38, 93, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:08:39', '', 100, 'cash', '', 0),
-(39, 100, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:09:28', '', 400, 'cash', '', 0),
-(40, 84, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:10:44', '', 650, 'cash', '', 0),
-(41, 65, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:11:35', '', 300, 'cash', '', 0),
-(42, 153, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:18:09', '', 100, 'cash', '', 0),
-(43, 152, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:20:33', '', 100, 'cash', '', 0),
-(44, 183, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:23:42', '', 3100, 'cash', '', 0),
-(45, 21, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:27:06', '', 3500, 'cash', '', 0),
-(46, 19, 2, 'in_store', 'in_store', 2, 1, '2025-06-27 18:29:49', '', 4500, 'cash', '', 0),
-(47, 192, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:31:21', '', 2800, 'cash', '', 0),
-(48, 19, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:31:41', '', 4500, 'cash', '', 0),
-(49, 59, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:32:35', '', 2600, 'cash', '', 0),
-(50, 55, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:52:14', '', 3000, 'cash', '', 0),
-(51, 36, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:54:39', '', 2600, 'cash', '', 0),
-(52, 31, 1, 'in_store', 'in_store', 2, 1, '2025-06-27 18:57:04', 'Eliyas doyo', 4000, 'credit', '', 3300),
-(53, 85, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:38:28', '', 700, 'cash', '', 0),
-(54, 183, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:43:13', '', 3100, 'cash', '', 0),
-(55, 36, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:43:46', '', 2600, 'cash', '', 0),
-(56, 81, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:46:19', '', 3100, 'account_transfer', 'cbe', 0),
-(57, 74, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:47:06', '', 400, 'account_transfer', '', 0),
-(58, 171, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 09:47:40', '', 150, 'cash', '', 0),
-(59, 97, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 10:27:11', '', 300, 'cash', '', 0),
-(60, 31, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 10:39:15', '', 4000, 'cash', '', 0),
-(61, 115, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 10:45:34', '', 75, 'cash', '', 0),
-(62, 192, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 10:47:24', '', 2800, 'cash', '', 0),
-(63, 108, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 10:48:41', '', 650, 'cash', '', 0),
-(64, 157, 4, 'in_store', 'in_store', 4, 1, '2025-06-28 10:50:33', '', 50, 'cash', '', 0),
-(65, 115, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 10:51:26', '', 75, 'cash', '', 0),
-(67, 213, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 11:01:27', 'አበራ11760', 1750, 'credit', '', 1800),
-(68, 151, 4, 'in_store', 'in_store', 4, 1, '2025-06-28 11:03:12', 'አበራ 11760', 150, 'credit', '', 600),
-(69, 192, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 11:04:52', '', 2800, 'cash', '', 0),
-(70, 31, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 11:06:57', '', 4000, 'cash', '', 0),
-(71, 192, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:01:05', '', 2800, 'cash', '', 0),
-(72, 193, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:01:52', '', 2700, 'cash', '', 0),
-(73, 66, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:03:11', '', 150, 'cash', '', 0),
-(74, 94, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:03:58', '', 150, 'cash', '', 0),
-(75, 156, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 15:04:37', '', 40, 'cash', '', 0),
-(76, 64, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 15:05:55', '', 250, 'cash', '', 0),
-(77, 91, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:06:56', '', 1200, 'cash', '', 0),
-(78, 59, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:51:32', '', 2600, 'cash', '', 0),
-(79, 101, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:52:47', '', 400, 'cash', '', 0),
-(80, 94, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:55:33', '', 150, 'cash', '', 0),
-(81, 19, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:56:59', '', 4500, 'cash', '', 0),
-(82, 66, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 15:57:26', '', 150, 'cash', '', 0),
-(83, 64, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 15:58:14', '', 250, 'cash', '', 0),
-(84, 165, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 16:00:44', '', 12800, 'account_transfer', 'cbe', 0),
-(85, 108, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 16:01:50', '', 650, 'cash', '', 0),
-(86, 32, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 16:03:23', '', 3500, 'cash', '', 0),
-(87, 33, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 16:05:45', '', 4400, 'cash', '', 0),
-(88, 65, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 16:06:11', '', 300, 'cash', '', 0),
-(89, 66, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 16:06:35', '', 150, 'cash', '', 0),
-(90, 202, 1, 'in_store', 'in_store', 4, 1, '2025-06-28 16:18:52', '', 220, 'cash', '', 0),
-(91, 142, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 17:05:12', '', 15000, 'account_transfer', 'cbe', 0),
-(92, 66, 2, 'in_store', 'in_store', 4, 1, '2025-06-28 17:08:20', '', 150, 'cash', '', 0),
-(94, 183, 1, 'in_store', 'in_store', 1, 1, '2025-06-29 19:35:17', '', 3100, 'cash', '', 0),
-(95, 206, 1, 'in_store', 'in_store', 2, 1, '2025-06-29 20:45:58', '', 150, 'cash', '', 0),
-(96, 174, 1, 'in_store', 'in_store', 2, 1, '2025-06-29 21:09:58', '', 600, 'cash', '', 0),
-(97, 19, 1, 'in_store', 'in_store', 2, 1, '2025-06-29 21:22:04', '', 4400, 'cash', '', 0),
-(98, 65, 2, 'in_store', 'in_store', 2, 1, '2025-06-29 21:22:38', '', 300, 'cash', '', 0),
-(99, 73, 1, 'in_store', 'in_store', 2, 1, '2025-06-29 21:31:42', 'Damis obama', 400, 'credit', '', 400),
-(100, 66, 10, 'in_store', 'in_store', 2, 1, '2025-06-29 21:33:04', 'ማሜ በሊስትረ', 140, 'credit', '', 1400),
-(101, 81, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 13:54:19', '', 3300, 'cash', '', 0),
-(102, 39, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 13:56:01', '', 4200, 'cash', '', 0),
-(103, 71, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 13:57:06', '', 750, 'cash', '', 0),
-(104, 36, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 13:58:03', '', 2600, 'cash', '', 0),
-(105, 37, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 13:58:27', '', 2400, 'cash', '', 0),
-(106, 61, 1, 'in_store', 'sold', 4, 1, '2025-06-30 14:00:15', '', 2000, 'cash', '', 0),
-(107, 183, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:01:38', '', 3100, 'cash', '', 0),
-(108, 87, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:08:31', '', 1600, 'cash', '', 0),
-(109, 50, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:09:38', '', 3100, 'cash', '', 0),
-(110, 32, 1, 'in_store', 'sold', 4, 1, '2025-06-30 14:13:52', '', 3500, 'cash', '', 0),
-(111, 70, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:14:47', '', 3300, 'cash', '', 0),
-(112, 157, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:15:21', '', 50, 'cash', '', 0),
-(113, 95, 3, 'in_store', 'in_store', 4, 1, '2025-06-30 14:16:05', '', 150, 'cash', '', 0),
-(114, 102, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:16:28', '', 250, 'cash', '', 0),
-(115, 66, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:18:15', '', 150, 'cash', '', 0),
-(116, 183, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:19:27', '', 3100, 'account_transfer', 'cbe', 0),
-(117, 67, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:25:49', '', 200, 'cash', '', 0),
-(118, 64, 2, 'in_store', 'in_store', 4, 1, '2025-06-30 14:26:09', '', 250, 'cash', '', 0),
-(119, 73, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:26:35', '', 400, 'cash', '', 0),
-(120, 83, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:27:10', '', 450, 'cash', '', 0),
-(121, 213, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:28:08', '', 1750, 'cash', '', 0),
-(122, 156, 2, 'in_store', 'in_store', 4, 1, '2025-06-30 14:28:35', '', 40, 'cash', '', 0),
-(123, 31, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:29:14', '', 4000, 'cash', '', 0),
-(124, 19, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:32:46', 'ትዕግሥቱ', 4500, 'credit', '', 3700),
-(125, 156, 2, 'in_store', 'in_store', 4, 1, '2025-06-30 14:33:25', '', 40, 'cash', '', 0),
-(126, 151, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:34:36', '', 150, 'cash', '', 0),
-(127, 155, 50, 'in_store', 'in_store', 4, 1, '2025-06-30 14:35:12', '', 25, 'cash', '', 0),
-(128, 83, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:36:53', '', 450, 'cash', '', 0),
-(129, 84, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:37:32', '', 650, 'cash', '', 0),
-(130, 35, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:38:28', '', 2800, 'cash', '', 0),
-(131, 66, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:39:18', '', 150, 'cash', '', 0),
-(132, 74, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:39:47', '', 400, 'cash', '', 0),
-(133, 21, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:41:59', 'አባራ 11760', 3500, 'credit', '', 3600),
-(134, 156, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:44:39', '', 40, 'cash', '', 0),
-(135, 127, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 14:45:06', '', 1000, 'cash', '', 0),
-(136, 192, 1, 'in_store', 'in_store', 4, 1, '2025-06-30 15:37:16', '', 2800, 'cash', '', 0),
-(137, 35, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:13:59', '', 2700, 'cash', '', 0),
-(138, 84, 3, 'in_store', 'in_store', 1, 1, '2025-06-30 17:17:09', 'እያሱ ህዝብ  fsr', 600, 'credit', '', 1500),
-(139, 66, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:19:22', '', 200, 'cash', '', 0),
-(140, 93, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:21:06', '', 100, 'cash', '', 0),
-(141, 140, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:22:26', '', 7900, 'cash', '', 0),
-(142, 66, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:23:31', '', 150, 'cash', '', 0),
-(143, 74, 2, 'in_store', 'in_store', 1, 1, '2025-06-30 17:24:58', '', 400, 'cash', '', 0),
-(144, 65, 2, 'in_store', 'in_store', 1, 1, '2025-06-30 17:26:46', '', 300, 'cash', '', 0),
-(145, 31, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:28:27', 'ኡስማን', 4100, 'credit', '', 4100),
-(146, 81, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:31:03', 'አበር', 3300, 'credit', '', 3300),
-(147, 74, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:33:13', 'አበራ', 300, 'credit', '', 300),
-(148, 152, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:34:18', 'አበራ', 100, 'credit', '', 100),
-(149, 183, 2, 'in_store', 'in_store', 1, 1, '2025-06-30 17:36:56', '', 3300, 'cash', '', 0),
-(150, 66, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:38:55', '', 200, 'cash', '', 0),
-(151, 66, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:41:29', '', 200, 'cash', '', 0),
-(152, 36, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:42:24', '', 2600, 'cash', '', 0),
-(153, 37, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:43:22', '', 2400, 'cash', '', 0),
-(154, 11, 2, 'in_store', 'in_store', 1, 1, '2025-06-30 17:45:54', '', 11400, 'cash', '', 0),
-(155, 14, 2, 'in_store', 'sold', 1, 1, '2025-06-30 17:47:56', '', 30000, 'cash', '', 0),
-(156, 35, 1, 'in_store', 'in_store', 1, 1, '2025-06-30 17:49:58', '', 2800, 'cash', '', 0),
-(157, 26, 1, 'in_store', 'sold', 1, 1, '2025-07-01 12:47:47', '', 3400, 'cash', '', 0),
-(158, 111, 1, 'in_store', 'in_store', 1, 1, '2025-07-01 12:47:47', '', 1300, 'cash', '', 0),
-(159, 113, 1, 'in_store', 'sold', 1, 1, '2025-07-01 12:47:47', '', 1300, 'cash', '', 0),
-(160, 11, 2, 'in_store', 'in_store', 1, 1, '2025-07-01 14:49:35', '', 11500, 'cash', '', 0),
-(161, 13, 2, 'in_store', 'in_store', 1, 1, '2025-07-01 14:49:35', '', 7700, 'cash', '', 0),
-(162, 167, 1, 'in_store', 'in_store', 1, 1, '2025-07-02 01:04:34', '', 4699, 'cash', '', 0),
-(163, 167, 2, 'in_store', 'in_store', 1, 1, '2025-07-02 01:06:59', '', 4699, 'cash', '', 0),
-(164, 11, 1, 'in_store', 'in_store', 1, 1, '2025-07-02 01:06:59', '', 11500, 'cash', '', 0);
+INSERT INTO `product_orders` (`id`, `user_id`, `organization_id`, `product_id`, `product_name`, `quantity`, `ordered_price`, `selling_price`, `payment_method`, `bank_name`, `paid_amount`, `unpaid_amount`, `status`, `created_at`, `received_at`) VALUES
+(1, 1, 1, 11, 'Battery 60Am', 7, '11000.50', '11500.00', 'bank', 'Awash', '77003.50', '0.00', 'received', '2025-07-05 10:04:20', '2025-07-05 10:05:19'),
+(2, 1, 1, 11, 'Battery 60Am', 10, '11000.50', '11500.00', 'mixed', 'Awash', '50000.00', '60005.00', 'received', '2025-07-05 10:08:14', '2025-07-05 10:09:23'),
+(3, 1, 1, 11, 'Battery 60Am', 50, '11000.50', '11500.00', 'bank', 'Awash', '550025.00', '0.00', 'received', '2025-07-05 10:49:08', '2025-07-05 10:49:18');
 
 -- --------------------------------------------------------
 
@@ -792,33 +580,19 @@ CREATE TABLE `spendings` (
   `category` enum('purchase','logistics','consumption') NOT NULL,
   `reason` varchar(255) NOT NULL,
   `comment` text DEFAULT NULL,
-  `transaction_date` timestamp NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `transaction_date` timestamp NULL DEFAULT current_timestamp(),
+  `payment_method` enum('cash','bank') NOT NULL DEFAULT 'cash',
+  `bank_name` varchar(20) DEFAULT NULL
+) ;
 
 --
 -- Dumping data for table `spendings`
 --
 
-INSERT INTO `spendings` (`id`, `user_id`, `organization_id`, `amount`, `category`, `reason`, `comment`, `transaction_date`) VALUES
-(11, 2, 1, '200.00', 'logistics', 'Misa', '', '2025-06-27 18:57:46'),
-(12, 4, 1, '27500.00', 'purchase', 'ከሽ ወደ አካውንት ', '', '2025-06-28 15:47:40'),
-(13, 2, 1, '3500.00', 'consumption', 'ኦባማ መደብ ተመለሽ ጆስ', '', '2025-06-28 20:24:10'),
-(15, 4, 1, '520.00', 'purchase', 'ምሳ $ ቁርስ ', '', '2025-06-30 14:44:07'),
-(16, 1, 1, '200.00', 'purchase', 'ኩሪስ', '', '2025-06-30 17:34:49'),
-(17, 1, 1, '700.00', 'purchase', 'transport', '', '2025-06-30 17:48:37');
-
--- --------------------------------------------------------
-
---
--- Table structure for table `suppliers`
---
-
-CREATE TABLE `suppliers` (
-  `id` int(11) NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `contact_email` varchar(255) DEFAULT NULL,
-  `lead_time` int(11) DEFAULT 7
-) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+INSERT INTO `spendings` (`id`, `user_id`, `organization_id`, `amount`, `category`, `reason`, `comment`, `transaction_date`, `payment_method`, `bank_name`) VALUES
+(20, 1, 1, '832.00', 'purchase', 'Mega', '', '2025-07-03 09:42:30', 'bank', 'Awash'),
+(21, 1, 1, '50000.00', 'purchase', 'Credit payment for order #1 (Battery 60Am)', NULL, '2025-07-05 10:14:48', 'bank', 'Awash'),
+(22, 1, 1, '27003.50', 'purchase', 'Credit payment for order #1 (Battery 60Am)', NULL, '2025-07-05 10:26:42', 'bank', 'Awash');
 
 -- --------------------------------------------------------
 
@@ -850,7 +624,9 @@ INSERT INTO `transactions` (`id`, `user_id`, `organization_id`, `payment_method`
 (5, 1, 1, 'cash', '', '', '0.00', '', '2025-07-02 07:25:36'),
 (6, 1, 1, 'credit', 'Awash', '', '355.00', 'Asefa', '2025-07-02 07:26:51'),
 (7, 1, 1, 'bank', 'Awash', '', '0.00', '', '2025-07-02 07:30:07'),
-(8, 1, 1, 'cash', '', '', '0.00', '', '2025-07-02 08:10:42');
+(8, 1, 1, 'cash', '', '', '0.00', '', '2025-07-02 08:10:42'),
+(9, 1, 1, 'cash', '', '', '0.00', '', '2025-07-03 04:46:57'),
+(10, 1, 1, 'credit', '', '', '300.00', 'Anb', '2025-07-03 04:47:16');
 
 -- --------------------------------------------------------
 
@@ -886,7 +662,11 @@ INSERT INTO `transaction_items` (`id`, `transaction_id`, `product_id`, `quantity
 (13, 7, 224, 17, '400.00'),
 (14, 7, 225, 16, '4500.00'),
 (15, 8, 224, 4, '425.00'),
-(16, 8, 225, 5, '4500.00');
+(16, 8, 225, 5, '4500.00'),
+(17, 9, 224, 1, '400.00'),
+(18, 9, 225, 1, '4500.00'),
+(19, 10, 224, 1, '400.00'),
+(20, 10, 225, 1, '4500.00');
 
 -- --------------------------------------------------------
 
@@ -911,635 +691,24 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `is_active`, `organization_id`, `created_at`, `last_login`) VALUES
-(1, 'betse', 'degi@gmail.com', '$2a$12$vAwnhpOnDxPL3jVHc9X7kOCGYA.AZltZcZSowB2gLV1vtR2ykLhjq', 'admin', 1, 1, '2025-06-10 13:10:12', '2025-06-27 19:10:49'),
+(1, 'betse', 'degi@gmail.com', '$2a$12$vAwnhpOnDxPL3jVHc9X7kOCGYA.AZltZcZSowB2gLV1vtR2ykLhjq', 'admin', 1, 1, '2025-06-10 13:10:12', '2025-07-03 13:55:50'),
 (2, 'bire', 'bire@gmail.com', '$2y$10$8AyuEpVhp7ETo9zUiu1xsOfCFuvK8EfP56ryGtM/bhxVBbru.pdm6', 'admin', 1, 1, '2025-06-10 13:59:01', '2025-06-26 12:36:29'),
 (3, 'mekdes', 'a@d.c', '$2y$10$DlLfgiHhUaUhFEtUBBgfOu5o2qFU5CNhmAqF77YeO.LRczyYZJhRS', 'worker', 1, 1, '2025-06-12 05:28:24', '2025-06-14 13:13:29'),
 (4, 'sanbu', 'n@g.c', '$2a$12$U1QBp2.ESjfbpTVoHTfwSeySKRFjUjJLXfZ/5Ob781pzfncX1gdsq', 'user', 1, 1, '2025-06-12 07:43:14', '2025-06-26 13:46:59'),
 (5, 'habte', 'habtsh@gmail.com', '$2a$12$5Cl.HwuQJJh/bs1nvUcdo.g/Lj4i5eCNOTa9XViiIPxI2ths.D.dm', 'admin', 1, 2, '2025-06-23 14:40:38', '2025-06-23 15:13:06'),
 (6, 'temesgen', 'Stire@gmail.com', '$2y$10$ESWFaKMu89r74Lw.wTB2rO5erX4U1NdUGUBl0BcUbwQlRPUrx.QkK', 'user', 1, 2, '2025-06-23 15:05:24', '2025-06-23 15:05:47');
 
--- --------------------------------------------------------
-
---
--- Table structure for table `user_activity`
---
-
-CREATE TABLE `user_activity` (
-  `id` int(11) NOT NULL,
-  `user_id` int(11) DEFAULT NULL,
-  `organization_id` int(11) DEFAULT NULL,
-  `activity_type` varchar(50) NOT NULL,
-  `description` mediumtext NOT NULL,
-  `ip_address` varchar(45) NOT NULL,
-  `activity_time` timestamp NULL DEFAULT current_timestamp(),
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `user_activity`
---
-
-INSERT INTO `user_activity` (`id`, `user_id`, `organization_id`, `activity_type`, `description`, `ip_address`, `activity_time`, `created_at`) VALUES
-(1, 1, 1, 'registration', 'User registered', '102.208.97.33', '2025-06-10 13:10:12', '2025-06-23 09:29:50'),
-(2, 1, 1, 'login', 'User logged in', '102.208.97.130', '2025-06-10 13:34:51', '2025-06-23 09:29:50'),
-(3, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:42:07', '2025-06-23 09:29:50'),
-(4, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-04 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:42:12', '2025-06-23 09:29:50'),
-(5, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:42:14', '2025-06-23 09:29:50'),
-(6, 1, 1, 'product_add', 'Added product \'Bela\' (ID: 4)', '102.208.97.130', '2025-06-10 13:46:45', '2025-06-23 09:29:50'),
-(7, 1, 1, 'product_update', 'Updated product ID: 4', '102.208.97.130', '2025-06-10 13:50:08', '2025-06-23 09:29:50'),
-(8, 1, 1, 'product_sale', 'Sold 300 units of product 4', '102.208.96.139', '2025-06-10 13:57:27', '2025-06-23 09:29:50'),
-(9, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:57:31', '2025-06-23 09:29:50'),
-(10, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:57:46', '2025-06-23 09:29:50'),
-(11, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-04 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:57:56', '2025-06-23 09:29:50'),
-(12, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:58:01', '2025-06-23 09:29:50'),
-(13, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-10 00:00:00 to 2025-06-10 23:59:59', '102.208.96.139', '2025-06-10 13:58:19', '2025-06-23 09:29:50'),
-(286, 2, 1, 'product_update', 'Updated product ID: 11', '196.190.61.128', '2025-06-21 09:33:59', '2025-06-23 09:29:50'),
-(287, 2, 1, 'product_update', 'Updated product ID: 14', '196.190.61.128', '2025-06-21 09:35:02', '2025-06-23 09:29:50'),
-(288, 2, 1, 'product_update', 'Updated product ID: 15', '196.190.61.128', '2025-06-21 09:35:46', '2025-06-23 09:29:50'),
-(289, 2, 1, 'product_update', 'Updated product ID: 11', '196.190.61.128', '2025-06-21 09:49:36', '2025-06-23 09:29:50'),
-(290, 2, 1, 'login', 'User logged in', '196.190.61.128', '2025-06-21 10:49:06', '2025-06-23 09:29:50'),
-(291, 2, 1, 'product_update', 'Updated product ID: 14', '196.190.61.128', '2025-06-21 10:49:41', '2025-06-23 09:29:50'),
-(292, 2, 1, 'login', 'User logged in', '196.190.61.128', '2025-06-21 13:26:22', '2025-06-23 09:29:50'),
-(293, 2, 1, 'product_update', 'Updated product ID: 68', '196.190.61.128', '2025-06-21 13:36:18', '2025-06-23 09:29:50'),
-(294, 2, 1, 'product_update', 'Updated product ID: 64', '196.190.61.128', '2025-06-21 14:32:29', '2025-06-23 09:29:50'),
-(295, 2, 1, 'product_update', 'Updated product ID: 65', '196.190.61.128', '2025-06-21 14:34:07', '2025-06-23 09:29:50'),
-(296, 2, 1, 'product_update', 'Updated product ID: 66', '196.190.61.128', '2025-06-21 14:35:28', '2025-06-23 09:29:50'),
-(297, 2, 1, 'product_update', 'Updated product ID: 67', '196.190.61.128', '2025-06-21 14:37:10', '2025-06-23 09:29:50'),
-(298, 2, 1, 'product_update', 'Updated product ID: 68', '196.190.61.128', '2025-06-21 14:45:06', '2025-06-23 09:29:50'),
-(299, 2, 1, 'product_update', 'Updated product ID: 78', '196.190.61.128', '2025-06-21 17:43:04', '2025-06-23 09:29:50'),
-(300, 2, 1, 'product_update', 'Updated product ID: 79', '196.190.61.128', '2025-06-21 17:49:48', '2025-06-23 09:29:50'),
-(301, 2, 1, 'login', 'User logged in', '196.190.61.128', '2025-06-21 18:33:19', '2025-06-23 09:29:50'),
-(302, 2, 1, 'login', 'User logged in', '196.190.61.128', '2025-06-21 18:34:29', '2025-06-23 09:29:50'),
-(303, 2, 1, 'product_update', 'Updated product ID: 99', '196.190.61.128', '2025-06-21 19:32:18', '2025-06-23 09:29:50'),
-(304, 2, 1, 'product_update', 'Updated product ID: 110', '196.190.61.128', '2025-06-21 20:22:30', '2025-06-23 09:29:50'),
-(305, 2, 1, 'login', 'User logged in', '102.213.69.142', '2025-06-22 07:16:01', '2025-06-23 09:29:50'),
-(306, 2, 1, 'login', 'User logged in', '169.150.196.154', '2025-06-22 09:28:02', '2025-06-23 09:29:50'),
-(307, 2, 1, 'login', 'User logged in', '169.150.196.154', '2025-06-22 09:30:20', '2025-06-23 09:29:50'),
-(308, 2, 1, 'login', 'User logged in', '102.213.69.142', '2025-06-22 13:06:48', '2025-06-23 09:29:50'),
-(309, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:07:06', '2025-06-23 09:29:50'),
-(310, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:07:08', '2025-06-23 09:29:50'),
-(311, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:07:10', '2025-06-23 09:29:50'),
-(312, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-19 00:00:00 to 2025-06-19 23:59:59', '102.213.69.142', '2025-06-22 13:07:15', '2025-06-23 09:29:50'),
-(313, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:16:47', '2025-06-23 09:29:50'),
-(314, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:16:51', '2025-06-23 09:29:50'),
-(315, 4, 1, 'login', 'User logged in', '102.213.69.142', '2025-06-22 13:20:07', '2025-06-23 09:29:50'),
-(316, 4, 1, 'product_sale', 'Sold 2 units of product 11', '102.213.69.142', '2025-06-22 13:20:44', '2025-06-23 09:29:50'),
-(317, 4, 1, 'product_sale', 'Sold 3 units of product 11', '102.213.69.142', '2025-06-22 13:21:44', '2025-06-23 09:29:50'),
-(318, 2, 1, 'login', 'User logged in', '102.213.69.142', '2025-06-22 13:22:11', '2025-06-23 09:29:50'),
-(319, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:22:21', '2025-06-23 09:29:50'),
-(320, 2, 1, 'spending_record', 'Recorded logistics spending of 5000', '102.213.69.142', '2025-06-22 13:50:27', '2025-06-23 09:29:50'),
-(321, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:50:32', '2025-06-23 09:29:50'),
-(322, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:50:40', '2025-06-23 09:29:50'),
-(323, 2, 1, 'product_update', 'Updated product ID: 10', '102.213.69.142', '2025-06-22 13:51:51', '2025-06-23 09:29:50'),
-(324, 2, 1, 'product_sale', 'Sold 10 units of product 31', '102.213.69.142', '2025-06-22 13:53:40', '2025-06-23 09:29:50'),
-(325, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:53:43', '2025-06-23 09:29:50'),
-(326, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.142', '2025-06-22 13:53:45', '2025-06-23 09:29:50'),
-(327, 2, 1, 'product_update', 'Updated product ID: 115', '196.188.253.94', '2025-06-22 15:40:55', '2025-06-23 09:29:50'),
-(328, 2, 1, 'product_update', 'Updated product ID: 114', '196.188.253.94', '2025-06-22 15:42:46', '2025-06-23 09:29:50'),
-(329, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-22 00:00:00 to 2025-06-22 23:59:59', '102.213.69.228', '2025-06-22 20:41:46', '2025-06-23 09:29:50'),
-(330, 2, 1, 'login', 'User bire logged in successfully.', '102.213.69.203', '2025-06-23 11:40:12', '2025-06-23 11:40:12'),
-(331, 2, 1, 'login', 'User bire logged in successfully.', '102.213.69.203', '2025-06-23 11:45:44', '2025-06-23 11:45:44'),
-(332, 2, 1, 'login', 'User bire logged in successfully.', '102.213.69.203', '2025-06-23 11:48:45', '2025-06-23 11:48:45'),
-(333, 2, 1, 'login', 'User logged in', '102.213.69.203', '2025-06-23 12:01:43', '2025-06-23 12:01:43'),
-(334, 2, 1, 'product_sale', 'Sold 1 units of product 12', '102.213.69.203', '2025-06-23 12:13:15', '2025-06-23 12:13:15'),
-(335, 2, 1, 'product_sale', 'Sold 3 units of product 11', '102.213.69.203', '2025-06-23 12:14:38', '2025-06-23 12:14:38'),
-(336, 2, 1, 'product_sale', 'Sold 5 units of product 11', '102.213.69.203', '2025-06-23 12:14:57', '2025-06-23 12:14:57'),
-(337, 2, 1, 'product_sale', 'Sold 7 units of product 11', '102.213.69.203', '2025-06-23 12:15:18', '2025-06-23 12:15:18'),
-(338, 5, 2, 'registration', 'User registered', '102.213.69.196', '2025-06-23 14:40:38', '2025-06-23 14:40:38'),
-(339, 5, 2, 'login', 'User logged in', '102.213.69.196', '2025-06-23 14:42:39', '2025-06-23 14:42:39'),
-(340, 5, 2, 'product_update', 'Updated product ID: 138', '102.213.69.196', '2025-06-23 15:01:57', '2025-06-23 15:01:57'),
-(341, 5, 2, 'product_update', 'Updated product ID: 138', '102.213.69.196', '2025-06-23 15:03:42', '2025-06-23 15:03:42'),
-(342, 5, 2, 'user_registration', 'Admin created user ID 6', '102.213.69.196', '2025-06-23 15:05:24', '2025-06-23 15:05:24'),
-(343, 6, 2, 'login', 'User logged in', '102.213.69.196', '2025-06-23 15:05:47', '2025-06-23 15:05:47'),
-(344, 6, 2, 'product_sale', 'Sold 100 units of product 141', '102.213.69.196', '2025-06-23 15:08:04', '2025-06-23 15:08:04'),
-(345, 6, 2, 'product_sale', 'Sold 350 units of product 138', '102.213.69.196', '2025-06-23 15:09:42', '2025-06-23 15:09:42'),
-(346, 6, 2, 'product_sale', 'Sold 2649 units of product 138', '102.213.69.196', '2025-06-23 15:11:01', '2025-06-23 15:11:01'),
-(347, 6, 2, 'spending_record', 'Recorded logistics spending of 50000', '102.213.69.196', '2025-06-23 15:11:50', '2025-06-23 15:11:50'),
-(348, 6, 2, 'spending_record', 'Recorded logistics spending of 22000', '102.213.69.196', '2025-06-23 15:12:36', '2025-06-23 15:12:36'),
-(349, 5, 2, 'login', 'User logged in', '102.213.69.196', '2025-06-23 15:13:06', '2025-06-23 15:13:06'),
-(350, 5, 2, 'reports_view', 'Viewed reports & transactions from 2025-06-23 00:00:00 to 2025-06-23 23:59:59', '102.213.69.196', '2025-06-23 15:13:19', '2025-06-23 15:13:19'),
-(351, 5, 2, 'reports_view', 'Viewed reports & transactions from 2025-06-23 00:00:00 to 2025-06-23 23:59:59', '102.213.69.196', '2025-06-23 15:13:33', '2025-06-23 15:13:33'),
-(352, 5, 2, 'reports_view', 'Viewed reports & transactions from 2025-06-23 00:00:00 to 2025-06-23 23:59:59', '102.213.69.196', '2025-06-23 15:13:59', '2025-06-23 15:13:59'),
-(353, 5, 2, 'reports_view', 'Viewed reports & transactions from 2025-06-04 00:00:00 to 2025-06-04 23:59:59', '102.213.69.196', '2025-06-23 15:14:56', '2025-06-23 15:14:56'),
-(354, 5, 2, 'reports_view', 'Viewed reports & transactions from 2025-06-23 00:00:00 to 2025-06-23 23:59:59', '102.213.69.196', '2025-06-23 15:15:10', '2025-06-23 15:15:10'),
-(355, 5, 2, 'product_sale', 'Sold 150 units of product 139', '102.213.69.196', '2025-06-23 15:26:36', '2025-06-23 15:26:36'),
-(356, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-23 00:00:00 to 2025-06-23 23:59:59', '102.213.69.247', '2025-06-23 19:43:29', '2025-06-23 19:43:29'),
-(357, 2, 1, 'login', 'User bire logged in successfully.', '102.213.68.147', '2025-06-24 11:30:24', '2025-06-24 11:30:24'),
-(358, 2, 1, 'login', 'User bire logged in successfully.', '102.213.68.147', '2025-06-24 15:07:56', '2025-06-24 15:07:56'),
-(359, 2, 1, 'login', 'User logged in', '102.213.68.147', '2025-06-24 15:31:54', '2025-06-24 15:31:54'),
-(360, 2, 1, 'login', 'User logged in', '196.188.254.39', '2025-06-24 16:13:27', '2025-06-24 16:13:27'),
-(361, 2, 1, 'product_update', 'Updated product ID: 15', '196.188.254.39', '2025-06-24 16:24:22', '2025-06-24 16:24:22'),
-(362, 2, 1, 'product_update', 'Updated product ID: 16', '196.188.254.39', '2025-06-24 17:11:05', '2025-06-24 17:11:05'),
-(363, 2, 1, 'product_update', 'Updated product ID: 17', '196.188.254.39', '2025-06-24 17:11:20', '2025-06-24 17:11:20'),
-(364, 2, 1, 'product_update', 'Updated product ID: 17', '196.188.254.39', '2025-06-24 17:13:10', '2025-06-24 17:13:10'),
-(365, 2, 1, 'product_update', 'Updated product ID: 21', '196.188.254.39', '2025-06-24 17:14:48', '2025-06-24 17:14:48'),
-(366, 2, 1, 'product_update', 'Updated product ID: 22', '196.188.254.39', '2025-06-24 17:25:57', '2025-06-24 17:25:57'),
-(367, 2, 1, 'product_update', 'Updated product ID: 23', '196.188.254.39', '2025-06-24 17:28:23', '2025-06-24 17:28:23'),
-(368, 2, 1, 'product_update', 'Updated product ID: 24', '196.188.254.39', '2025-06-24 17:40:16', '2025-06-24 17:40:16'),
-(369, 2, 1, 'product_update', 'Updated product ID: 22', '196.188.254.39', '2025-06-24 17:41:14', '2025-06-24 17:41:14'),
-(370, 2, 1, 'product_update', 'Updated product ID: 24', '196.188.254.39', '2025-06-24 17:41:44', '2025-06-24 17:41:44'),
-(371, 2, 1, 'product_update', 'Updated product ID: 25', '196.188.254.39', '2025-06-24 17:42:31', '2025-06-24 17:42:31'),
-(372, 2, 1, 'product_update', 'Updated product ID: 26', '196.188.254.39', '2025-06-24 17:44:50', '2025-06-24 17:44:50'),
-(373, 2, 1, 'product_update', 'Updated product ID: 27', '196.188.254.39', '2025-06-24 17:45:48', '2025-06-24 17:45:48'),
-(374, 2, 1, 'product_update', 'Updated product ID: 28', '196.188.254.39', '2025-06-24 17:47:19', '2025-06-24 17:47:19'),
-(375, 2, 1, 'product_update', 'Updated product ID: 29', '196.188.254.39', '2025-06-24 17:47:45', '2025-06-24 17:47:45'),
-(376, 2, 1, 'product_update', 'Updated product ID: 30', '196.188.254.39', '2025-06-24 17:48:20', '2025-06-24 17:48:20'),
-(377, 2, 1, 'product_update', 'Updated product ID: 31', '196.188.254.39', '2025-06-24 17:48:53', '2025-06-24 17:48:53'),
-(378, 2, 1, 'product_update', 'Updated product ID: 32', '196.188.254.39', '2025-06-24 17:49:24', '2025-06-24 17:49:24'),
-(379, 2, 1, 'product_update', 'Updated product ID: 33', '196.188.254.39', '2025-06-24 17:50:23', '2025-06-24 17:50:23'),
-(380, 2, 1, 'product_update', 'Updated product ID: 34', '196.188.254.39', '2025-06-24 17:51:24', '2025-06-24 17:51:24'),
-(381, 2, 1, 'product_update', 'Updated product ID: 34', '196.188.254.39', '2025-06-24 17:52:04', '2025-06-24 17:52:04'),
-(382, 2, 1, 'product_update', 'Updated product ID: 35', '196.188.254.39', '2025-06-24 17:54:38', '2025-06-24 17:54:38'),
-(383, 2, 1, 'product_update', 'Updated product ID: 38', '196.188.254.39', '2025-06-24 18:00:25', '2025-06-24 18:00:25'),
-(384, 2, 1, 'product_update', 'Updated product ID: 39', '196.188.254.39', '2025-06-24 18:01:43', '2025-06-24 18:01:43'),
-(385, 2, 1, 'product_update', 'Updated product ID: 40', '196.188.254.39', '2025-06-24 18:02:38', '2025-06-24 18:02:38'),
-(386, 2, 1, 'product_update', 'Updated product ID: 45', '196.188.254.39', '2025-06-24 18:18:14', '2025-06-24 18:18:14'),
-(387, 2, 1, 'product_update', 'Updated product ID: 54', '196.188.254.39', '2025-06-24 18:21:54', '2025-06-24 18:21:54'),
-(388, 2, 1, 'product_update', 'Updated product ID: 55', '196.188.254.39', '2025-06-24 18:23:00', '2025-06-24 18:23:00'),
-(389, 2, 1, 'product_update', 'Updated product ID: 58', '196.188.254.39', '2025-06-24 18:25:26', '2025-06-24 18:25:26'),
-(390, 2, 1, 'product_update', 'Updated product ID: 61', '196.188.254.39', '2025-06-24 18:32:13', '2025-06-24 18:32:13'),
-(391, 2, 1, 'product_update', 'Updated product ID: 64', '196.188.254.39', '2025-06-24 18:33:46', '2025-06-24 18:33:46'),
-(392, 2, 1, 'product_update', 'Updated product ID: 65', '196.188.254.39', '2025-06-24 18:37:22', '2025-06-24 18:37:22'),
-(393, 2, 1, 'product_update', 'Updated product ID: 66', '196.188.254.39', '2025-06-24 18:38:25', '2025-06-24 18:38:25'),
-(394, 2, 1, 'product_update', 'Updated product ID: 69', '196.188.254.39', '2025-06-24 18:42:11', '2025-06-24 18:42:11'),
-(395, 2, 1, 'product_update', 'Updated product ID: 72', '196.188.254.39', '2025-06-24 19:43:34', '2025-06-24 19:43:34'),
-(396, 2, 1, 'product_update', 'Updated product ID: 77', '196.188.254.39', '2025-06-24 19:48:32', '2025-06-24 19:48:32'),
-(397, 2, 1, 'product_update', 'Updated product ID: 79', '196.188.254.39', '2025-06-24 22:05:16', '2025-06-24 22:05:16'),
-(398, 2, 1, 'product_update', 'Updated product ID: 84', '196.188.254.39', '2025-06-24 22:07:59', '2025-06-24 22:07:59'),
-(399, 2, 1, 'product_update', 'Updated product ID: 88', '196.188.254.39', '2025-06-24 22:10:55', '2025-06-24 22:10:55'),
-(400, 2, 1, 'login', 'User bire logged in successfully.', '196.188.253.153', '2025-06-25 12:01:07', '2025-06-25 12:01:07'),
-(401, 2, 1, 'login', 'User bire logged in successfully.', '102.208.97.109', '2025-06-25 12:08:31', '2025-06-25 12:08:31'),
-(402, 4, 1, 'login', 'User logged in', '196.188.253.229', '2025-06-25 12:33:38', '2025-06-25 12:33:38'),
-(403, 4, 1, 'product_sale', 'Sold 1 units of product 37', '196.188.253.229', '2025-06-25 12:35:34', '2025-06-25 12:35:34'),
-(404, 4, 1, 'product_sale', 'Sold 2 units of product 36', '196.188.253.229', '2025-06-25 12:37:13', '2025-06-25 12:37:13'),
-(405, 4, 1, 'product_sale', 'Sold 3 units of product 36', '196.188.253.229', '2025-06-25 12:38:20', '2025-06-25 12:38:20'),
-(406, 4, 1, 'spending_record', 'Recorded consumption spending of 500', '196.188.253.229', '2025-06-25 12:40:58', '2025-06-25 12:40:58'),
-(407, 4, 1, 'spending_record', 'Recorded logistics spending of 3000', '196.188.253.229', '2025-06-25 13:22:20', '2025-06-25 13:22:20'),
-(408, 4, 1, 'spending_record', 'Recorded consumption spending of 330', '196.188.253.229', '2025-06-25 13:23:25', '2025-06-25 13:23:25'),
-(409, 4, 1, 'product_sale', 'Sold 1 units of product 142', '196.188.253.229', '2025-06-25 13:28:07', '2025-06-25 13:28:07'),
-(410, 2, 1, 'product_update', 'Updated product ID: 72', '196.188.253.153', '2025-06-25 13:33:51', '2025-06-25 13:33:51'),
-(411, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-25 00:00:00 to 2025-06-25 23:59:59', '196.188.253.153', '2025-06-25 13:35:00', '2025-06-25 13:35:00'),
-(412, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-25 00:00:00 to 2025-06-25 23:59:59', '196.188.253.153', '2025-06-25 13:35:58', '2025-06-25 13:35:58'),
-(413, 2, 1, 'product_update', 'Updated product ID: 95', '196.188.253.153', '2025-06-25 16:06:15', '2025-06-25 16:06:15'),
-(414, 2, 1, 'product_update', 'Updated product ID: 96', '196.188.253.153', '2025-06-25 16:06:31', '2025-06-25 16:06:31'),
-(415, 2, 1, 'product_update', 'Updated product ID: 93', '196.188.253.153', '2025-06-25 16:07:41', '2025-06-25 16:07:41'),
-(416, 2, 1, 'product_update', 'Updated product ID: 94', '196.188.253.153', '2025-06-25 16:16:18', '2025-06-25 16:16:18'),
-(417, 2, 1, 'product_update', 'Updated product ID: 94', '196.188.253.153', '2025-06-25 16:16:36', '2025-06-25 16:16:36'),
-(418, 4, 1, 'login', 'User logged in', '196.190.61.123', '2025-06-26 09:16:27', '2025-06-26 09:16:27'),
-(419, 2, 1, 'login', 'User logged in', '196.190.61.123', '2025-06-26 09:17:00', '2025-06-26 09:17:00'),
-(420, 2, 1, 'login', 'User bire logged in successfully.', '102.218.50.43', '2025-06-26 12:25:57', '2025-06-26 12:25:57'),
-(421, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '196.190.61.123', '2025-06-26 12:35:27', '2025-06-26 12:35:27'),
-(422, 2, 1, 'password_change', 'User changed own password', '196.190.61.123', '2025-06-26 12:36:11', '2025-06-26 12:36:11'),
-(423, 2, 1, 'login', 'User logged in', '196.190.61.123', '2025-06-26 12:36:29', '2025-06-26 12:36:29'),
-(424, 2, 1, 'product_update', 'Updated product ID: 65', '196.190.61.123', '2025-06-26 13:43:11', '2025-06-26 13:43:11'),
-(425, 2, 1, 'product_update', 'Updated product ID: 64', '196.190.61.123', '2025-06-26 13:44:04', '2025-06-26 13:44:04'),
-(426, 2, 1, 'product_update', 'Updated product ID: 66', '196.190.61.123', '2025-06-26 13:45:39', '2025-06-26 13:45:39'),
-(427, 4, 1, 'login', 'User logged in', '102.218.50.216', '2025-06-26 13:46:59', '2025-06-26 13:46:59'),
-(428, 2, 1, 'product_update', 'Updated product ID: 67', '196.190.61.123', '2025-06-26 13:47:29', '2025-06-26 13:47:29'),
-(429, 2, 1, 'product_update', 'Updated product ID: 68', '196.190.61.123', '2025-06-26 13:48:15', '2025-06-26 13:48:15'),
-(430, 1, 1, 'login', 'User logged in', '102.218.50.216', '2025-06-26 13:48:38', '2025-06-26 13:48:38'),
-(431, 2, 1, 'product_update', 'Updated product ID: 69', '196.190.61.123', '2025-06-26 13:49:00', '2025-06-26 13:49:00'),
-(432, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:49:20', '2025-06-26 13:49:20'),
-(433, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:49:34', '2025-06-26 13:49:34'),
-(434, 2, 1, 'product_update', 'Updated product ID: 70', '196.190.61.123', '2025-06-26 13:50:05', '2025-06-26 13:50:05'),
-(435, 1, 1, 'product_sale', 'Sold 7 units of product 167', '102.218.50.216', '2025-06-26 13:50:14', '2025-06-26 13:50:14'),
-(436, 1, 1, 'login', 'User betse logged in successfully.', '102.213.69.10', '2025-06-26 13:50:36', '2025-06-26 13:50:36'),
-(437, 2, 1, 'product_update', 'Updated product ID: 71', '196.190.61.123', '2025-06-26 13:51:08', '2025-06-26 13:51:08'),
-(438, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:52:10', '2025-06-26 13:52:10'),
-(439, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:52:20', '2025-06-26 13:52:20'),
-(440, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:52:33', '2025-06-26 13:52:33'),
-(441, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:52:36', '2025-06-26 13:52:36'),
-(442, 2, 1, 'product_update', 'Updated product ID: 71', '196.190.61.123', '2025-06-26 13:52:44', '2025-06-26 13:52:44'),
-(443, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:53:45', '2025-06-26 13:53:45'),
-(444, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '102.218.50.216', '2025-06-26 13:53:49', '2025-06-26 13:53:49'),
-(445, 2, 1, 'product_update', 'Updated product ID: 72', '196.190.61.123', '2025-06-26 13:55:23', '2025-06-26 13:55:23'),
-(446, 2, 1, 'product_update', 'Updated product ID: 73', '196.190.61.123', '2025-06-26 13:57:31', '2025-06-26 13:57:31'),
-(447, 2, 1, 'product_update', 'Updated product ID: 73', '196.190.61.123', '2025-06-26 13:59:45', '2025-06-26 13:59:45'),
-(448, 2, 1, 'product_update', 'Updated product ID: 74', '196.190.61.123', '2025-06-26 14:00:00', '2025-06-26 14:00:00'),
-(449, 2, 1, 'product_update', 'Updated product ID: 75', '196.190.61.123', '2025-06-26 14:01:11', '2025-06-26 14:01:11'),
-(450, 2, 1, 'product_update', 'Updated product ID: 76', '196.190.61.123', '2025-06-26 14:01:35', '2025-06-26 14:01:35'),
-(451, 2, 1, 'product_update', 'Updated product ID: 77', '196.190.61.123', '2025-06-26 14:02:08', '2025-06-26 14:02:08'),
-(452, 2, 1, 'product_update', 'Updated product ID: 78', '196.190.61.123', '2025-06-26 14:02:51', '2025-06-26 14:02:51'),
-(453, 2, 1, 'product_update', 'Updated product ID: 81', '196.190.61.123', '2025-06-26 14:04:24', '2025-06-26 14:04:24'),
-(454, 1, 1, 'login', 'User betse logged in successfully.', '102.213.69.10', '2025-06-26 14:46:05', '2025-06-26 14:46:05'),
-(455, 1, 1, 'login', 'User betse logged in successfully.', '102.213.69.10', '2025-06-26 14:50:43', '2025-06-26 14:50:43'),
-(456, 1, 1, 'login', 'User betse logged in successfully.', '196.190.61.123', '2025-06-26 15:35:23', '2025-06-26 15:35:23'),
-(457, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '196.190.61.123', '2025-06-26 15:59:13', '2025-06-26 15:59:13'),
-(458, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-26 00:00:00 to 2025-06-26 23:59:59', '196.190.61.123', '2025-06-26 15:59:16', '2025-06-26 15:59:16'),
-(459, 2, 1, 'product_update', 'Updated product ID: 88', '196.190.61.123', '2025-06-26 16:21:15', '2025-06-26 16:21:15'),
-(460, 2, 1, 'product_update', 'Updated product ID: 90', '196.190.61.123', '2025-06-26 16:22:09', '2025-06-26 16:22:09'),
-(461, 2, 1, 'product_update', 'Updated product ID: 91', '196.190.61.123', '2025-06-26 16:22:47', '2025-06-26 16:22:47'),
-(462, 2, 1, 'product_update', 'Updated product ID: 93', '196.190.61.123', '2025-06-26 16:28:15', '2025-06-26 16:28:15'),
-(463, 2, 1, 'product_update', 'Updated product ID: 94', '196.190.61.123', '2025-06-26 16:29:13', '2025-06-26 16:29:13'),
-(464, 2, 1, 'product_update', 'Updated product ID: 95', '196.190.61.123', '2025-06-26 16:29:37', '2025-06-26 16:29:37'),
-(465, 2, 1, 'product_update', 'Updated product ID: 96', '196.190.61.123', '2025-06-26 16:29:55', '2025-06-26 16:29:55'),
-(466, 2, 1, 'product_update', 'Updated product ID: 96', '196.190.61.123', '2025-06-26 16:30:37', '2025-06-26 16:30:37'),
-(467, 2, 1, 'product_update', 'Updated product ID: 97', '196.190.61.123', '2025-06-26 16:31:11', '2025-06-26 16:31:11'),
-(468, 2, 1, 'product_update', 'Updated product ID: 97', '196.190.61.123', '2025-06-26 16:33:08', '2025-06-26 16:33:08'),
-(469, 2, 1, 'product_update', 'Updated product ID: 98', '196.190.61.123', '2025-06-26 16:33:54', '2025-06-26 16:33:54'),
-(470, 2, 1, 'product_update', 'Updated product ID: 99', '196.190.61.123', '2025-06-26 16:35:31', '2025-06-26 16:35:31'),
-(471, 2, 1, 'product_update', 'Updated product ID: 100', '196.190.61.123', '2025-06-26 16:36:05', '2025-06-26 16:36:05'),
-(472, 2, 1, 'product_update', 'Updated product ID: 101', '196.190.61.123', '2025-06-26 16:38:29', '2025-06-26 16:38:29'),
-(473, 2, 1, 'product_update', 'Updated product ID: 102', '196.190.61.123', '2025-06-26 16:39:33', '2025-06-26 16:39:33'),
-(474, 2, 1, 'product_update', 'Updated product ID: 104', '196.190.61.123', '2025-06-26 16:41:22', '2025-06-26 16:41:22'),
-(475, 2, 1, 'product_update', 'Updated product ID: 105', '196.190.61.123', '2025-06-26 16:42:01', '2025-06-26 16:42:01'),
-(476, 2, 1, 'product_update', 'Updated product ID: 106', '196.190.61.123', '2025-06-26 16:43:31', '2025-06-26 16:43:31'),
-(477, 2, 1, 'product_update', 'Updated product ID: 107', '196.190.61.123', '2025-06-26 16:45:40', '2025-06-26 16:45:40'),
-(478, 2, 1, 'product_update', 'Updated product ID: 108', '196.190.61.123', '2025-06-26 16:46:43', '2025-06-26 16:46:43'),
-(479, 2, 1, 'product_update', 'Updated product ID: 109', '196.190.61.123', '2025-06-26 16:47:03', '2025-06-26 16:47:03'),
-(480, 2, 1, 'product_update', 'Updated product ID: 110', '196.190.61.123', '2025-06-26 16:48:59', '2025-06-26 16:48:59'),
-(481, 2, 1, 'product_update', 'Updated product ID: 111', '196.190.61.123', '2025-06-26 16:51:00', '2025-06-26 16:51:00'),
-(482, 2, 1, 'product_update', 'Updated product ID: 112', '196.190.61.123', '2025-06-26 16:51:13', '2025-06-26 16:51:13'),
-(483, 2, 1, 'product_update', 'Updated product ID: 113', '196.190.61.123', '2025-06-26 16:54:32', '2025-06-26 16:54:32'),
-(484, 2, 1, 'product_update', 'Updated product ID: 115', '196.190.61.123', '2025-06-26 16:57:01', '2025-06-26 16:57:01'),
-(485, 2, 1, 'product_update', 'Updated product ID: 116', '196.190.61.123', '2025-06-26 16:58:07', '2025-06-26 16:58:07'),
-(486, 2, 1, 'product_update', 'Updated product ID: 124', '196.190.61.123', '2025-06-26 19:07:27', '2025-06-26 19:07:27'),
-(487, 2, 1, 'product_update', 'Updated product ID: 170', '196.190.61.123', '2025-06-26 19:11:25', '2025-06-26 19:11:25'),
-(488, 2, 1, 'product_update', 'Updated product ID: 11', '196.190.61.123', '2025-06-26 19:15:15', '2025-06-26 19:15:15'),
-(489, 2, 1, 'product_update', 'Updated product ID: 12', '196.190.61.123', '2025-06-26 19:15:49', '2025-06-26 19:15:49'),
-(490, 2, 1, 'product_update', 'Updated product ID: 176', '196.190.61.123', '2025-06-26 19:23:07', '2025-06-26 19:23:07'),
-(491, 2, 1, 'product_update', 'Updated product ID: 18', '196.190.61.123', '2025-06-26 19:58:53', '2025-06-26 19:58:53'),
-(492, 2, 1, 'product_update', 'Updated product ID: 19', '196.190.61.123', '2025-06-26 20:00:59', '2025-06-26 20:00:59'),
-(493, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-26 20:04:28', '2025-06-26 20:04:28'),
-(494, 2, 1, 'product_update', 'Updated product ID: 21', '196.190.61.123', '2025-06-26 20:06:32', '2025-06-26 20:06:32'),
-(495, 2, 1, 'product_update', 'Updated product ID: 21', '196.190.61.123', '2025-06-26 20:07:03', '2025-06-26 20:07:03'),
-(496, 2, 1, 'product_update', 'Updated product ID: 22', '196.190.61.123', '2025-06-26 20:08:21', '2025-06-26 20:08:21'),
-(497, 2, 1, 'product_update', 'Updated product ID: 23', '196.190.61.123', '2025-06-26 20:09:39', '2025-06-26 20:09:39'),
-(498, 2, 1, 'product_update', 'Updated product ID: 24', '196.190.61.123', '2025-06-26 20:10:40', '2025-06-26 20:10:40'),
-(499, 2, 1, 'product_update', 'Updated product ID: 25', '196.190.61.123', '2025-06-26 20:11:44', '2025-06-26 20:11:44'),
-(500, 2, 1, 'product_update', 'Updated product ID: 26', '196.190.61.123', '2025-06-26 20:23:52', '2025-06-26 20:23:52'),
-(501, 2, 1, 'product_update', 'Updated product ID: 27', '196.190.61.123', '2025-06-26 20:24:55', '2025-06-26 20:24:55'),
-(502, 2, 1, 'product_update', 'Updated product ID: 28', '196.190.61.123', '2025-06-26 20:25:39', '2025-06-26 20:25:39'),
-(503, 2, 1, 'product_update', 'Updated product ID: 29', '196.190.61.123', '2025-06-26 20:25:59', '2025-06-26 20:25:59'),
-(504, 2, 1, 'product_update', 'Updated product ID: 29', '196.190.61.123', '2025-06-26 20:26:00', '2025-06-26 20:26:00'),
-(505, 2, 1, 'product_update', 'Updated product ID: 31', '196.190.61.123', '2025-06-26 20:27:46', '2025-06-26 20:27:46'),
-(506, 2, 1, 'product_update', 'Updated product ID: 31', '196.190.61.123', '2025-06-26 20:28:32', '2025-06-26 20:28:32'),
-(507, 2, 1, 'product_update', 'Updated product ID: 31', '196.190.61.123', '2025-06-26 20:29:46', '2025-06-26 20:29:46'),
-(508, 2, 1, 'product_update', 'Updated product ID: 32', '196.190.61.123', '2025-06-26 20:30:31', '2025-06-26 20:30:31'),
-(509, 2, 1, 'product_update', 'Updated product ID: 33', '196.190.61.123', '2025-06-26 20:32:26', '2025-06-26 20:32:26'),
-(510, 2, 1, 'product_update', 'Updated product ID: 34', '196.190.61.123', '2025-06-26 20:33:57', '2025-06-26 20:33:57'),
-(511, 2, 1, 'product_update', 'Updated product ID: 35', '196.190.61.123', '2025-06-26 20:36:12', '2025-06-26 20:36:12'),
-(512, 2, 1, 'product_update', 'Updated product ID: 36', '196.190.61.123', '2025-06-26 20:37:33', '2025-06-26 20:37:33'),
-(513, 2, 1, 'product_update', 'Updated product ID: 36', '196.190.61.123', '2025-06-26 20:38:27', '2025-06-26 20:38:27'),
-(514, 2, 1, 'product_update', 'Updated product ID: 37', '196.190.61.123', '2025-06-26 20:39:51', '2025-06-26 20:39:51'),
-(515, 2, 1, 'product_update', 'Updated product ID: 39', '196.190.61.123', '2025-06-26 20:44:05', '2025-06-26 20:44:05'),
-(516, 2, 1, 'product_update', 'Updated product ID: 40', '196.190.61.123', '2025-06-26 20:45:22', '2025-06-26 20:45:22'),
-(517, 2, 1, 'product_update', 'Updated product ID: 40', '196.190.61.123', '2025-06-26 20:45:40', '2025-06-26 20:45:40'),
-(518, 2, 1, 'product_update', 'Updated product ID: 40', '196.190.61.123', '2025-06-26 20:46:11', '2025-06-26 20:46:11'),
-(519, 2, 1, 'product_update', 'Updated product ID: 41', '196.190.61.123', '2025-06-26 20:46:53', '2025-06-26 20:46:53'),
-(520, 2, 1, 'product_update', 'Updated product ID: 41', '196.190.61.123', '2025-06-26 20:47:49', '2025-06-26 20:47:49'),
-(521, 2, 1, 'product_update', 'Updated product ID: 42', '196.190.61.123', '2025-06-26 20:50:27', '2025-06-26 20:50:27'),
-(522, 2, 1, 'product_update', 'Updated product ID: 43', '196.190.61.123', '2025-06-26 20:51:15', '2025-06-26 20:51:15'),
-(523, 2, 1, 'product_update', 'Updated product ID: 43', '196.190.61.123', '2025-06-26 20:51:17', '2025-06-26 20:51:17'),
-(524, 2, 1, 'product_update', 'Updated product ID: 44', '196.190.61.123', '2025-06-26 20:52:12', '2025-06-26 20:52:12'),
-(525, 2, 1, 'product_update', 'Updated product ID: 44', '196.190.61.123', '2025-06-26 20:52:56', '2025-06-26 20:52:56'),
-(526, 2, 1, 'product_update', 'Updated product ID: 45', '196.190.61.123', '2025-06-26 20:58:22', '2025-06-26 20:58:22'),
-(527, 2, 1, 'product_update', 'Updated product ID: 46', '196.190.61.123', '2025-06-26 21:00:00', '2025-06-26 21:00:00'),
-(528, 2, 1, 'product_update', 'Updated product ID: 47', '196.190.61.123', '2025-06-26 21:01:09', '2025-06-26 21:01:09'),
-(529, 2, 1, 'product_update', 'Updated product ID: 48', '196.190.61.123', '2025-06-26 21:03:40', '2025-06-26 21:03:40'),
-(530, 2, 1, 'product_update', 'Updated product ID: 49', '196.190.61.123', '2025-06-26 21:04:59', '2025-06-26 21:04:59'),
-(531, 2, 1, 'product_update', 'Updated product ID: 50', '196.190.61.123', '2025-06-26 21:06:10', '2025-06-26 21:06:10'),
-(532, 2, 1, 'product_update', 'Updated product ID: 51', '196.190.61.123', '2025-06-26 21:07:07', '2025-06-26 21:07:07'),
-(533, 2, 1, 'product_update', 'Updated product ID: 52', '196.190.61.123', '2025-06-26 21:07:40', '2025-06-26 21:07:40'),
-(534, 2, 1, 'product_update', 'Updated product ID: 53', '196.190.61.123', '2025-06-26 21:08:04', '2025-06-26 21:08:04'),
-(535, 2, 1, 'product_update', 'Updated product ID: 54', '196.190.61.123', '2025-06-26 21:08:27', '2025-06-26 21:08:27'),
-(536, 2, 1, 'product_update', 'Updated product ID: 55', '196.190.61.123', '2025-06-26 21:09:07', '2025-06-26 21:09:07'),
-(537, 2, 1, 'product_update', 'Updated product ID: 55', '196.190.61.123', '2025-06-26 21:09:24', '2025-06-26 21:09:24'),
-(538, 2, 1, 'product_update', 'Updated product ID: 56', '196.190.61.123', '2025-06-26 21:09:55', '2025-06-26 21:09:55'),
-(539, 2, 1, 'product_update', 'Updated product ID: 57', '196.190.61.123', '2025-06-26 21:10:45', '2025-06-26 21:10:45'),
-(540, 2, 1, 'product_update', 'Updated product ID: 57', '196.190.61.123', '2025-06-26 21:12:52', '2025-06-26 21:12:52'),
-(541, 2, 1, 'product_update', 'Updated product ID: 58', '196.190.61.123', '2025-06-26 21:17:24', '2025-06-26 21:17:24'),
-(542, 2, 1, 'product_update', 'Updated product ID: 59', '196.190.61.123', '2025-06-26 21:19:06', '2025-06-26 21:19:06'),
-(543, 2, 1, 'product_update', 'Updated product ID: 60', '196.190.61.123', '2025-06-26 21:21:24', '2025-06-26 21:21:24'),
-(544, 2, 1, 'product_update', 'Updated product ID: 60', '196.190.61.123', '2025-06-26 21:25:03', '2025-06-26 21:25:03'),
-(545, 2, 1, 'product_update', 'Updated product ID: 61', '196.190.61.123', '2025-06-26 21:26:38', '2025-06-26 21:26:38'),
-(546, 2, 1, 'product_update', 'Updated product ID: 190', '196.190.61.123', '2025-06-26 21:43:24', '2025-06-26 21:43:24'),
-(547, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-26 21:50:17', '2025-06-26 21:50:17'),
-(548, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-26 21:51:11', '2025-06-26 21:51:11'),
-(549, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-26 21:51:13', '2025-06-26 21:51:13'),
-(550, 1, 1, 'login', 'User logged in', '102.213.68.161', '2025-06-27 09:14:19', '2025-06-27 09:14:19'),
-(551, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:36:15', '2025-06-27 09:36:15'),
-(552, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-21 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:36:24', '2025-06-27 09:36:24'),
-(553, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:36:29', '2025-06-27 09:36:29'),
-(554, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:36:33', '2025-06-27 09:36:33'),
-(555, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:37:33', '2025-06-27 09:37:33'),
-(556, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:40:59', '2025-06-27 09:40:59'),
-(557, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:41:03', '2025-06-27 09:41:03'),
-(558, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:50:50', '2025-06-27 09:50:50'),
-(559, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:50:53', '2025-06-27 09:50:53'),
-(560, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:51:23', '2025-06-27 09:51:23'),
-(561, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 09:51:25', '2025-06-27 09:51:25'),
-(562, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:12:16', '2025-06-27 10:12:16'),
-(563, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:12:20', '2025-06-27 10:12:20'),
-(564, 1, 1, 'reports_view', 'Viewed reports & transactions from 2024-03-14 00:00:00 to 2024-03-14 23:59:59', '102.213.68.161', '2025-06-27 10:12:37', '2025-06-27 10:12:37'),
-(565, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:13:07', '2025-06-27 10:13:07'),
-(566, 1, 1, 'reports_view', 'Viewed reports & transactions from 2024-03-14 00:00:00 to 2024-03-14 23:59:59', '102.213.68.161', '2025-06-27 10:13:25', '2025-06-27 10:13:25'),
-(567, 1, 1, 'reports_view', 'Viewed reports & transactions from 2024-03-29 00:00:00 to 2024-03-29 23:59:59', '102.213.68.161', '2025-06-27 10:13:46', '2025-06-27 10:13:46'),
-(568, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-03-14 00:00:00 to 2025-03-14 23:59:59', '102.213.68.161', '2025-06-27 10:16:32', '2025-06-27 10:16:32'),
-(569, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-03-13 00:00:00 to 2025-03-13 23:59:59', '102.213.68.161', '2025-06-27 10:16:47', '2025-06-27 10:16:47'),
-(570, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:16:59', '2025-06-27 10:16:59'),
-(571, 2, 1, 'product_update', 'Updated product ID: 76', '196.190.61.123', '2025-06-27 10:25:15', '2025-06-27 10:25:15'),
-(572, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:31:05', '2025-06-27 10:31:05'),
-(573, 1, 1, 'reports_view', 'Viewed reports & transactions from 2024-06-25 00:00:00 to 2024-06-25 23:59:59', '102.213.68.161', '2025-06-27 10:31:18', '2025-06-27 10:31:18'),
-(574, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:31:48', '2025-06-27 10:31:48'),
-(575, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:31:52', '2025-06-27 10:31:52'),
-(576, 1, 1, 'reports_view', 'Viewed reports & transactions from 2024-06-21 00:00:00 to 2024-06-21 23:59:59', '102.213.68.161', '2025-06-27 10:32:07', '2025-06-27 10:32:07'),
-(577, 1, 1, 'reports_view', 'Viewed reports & transactions from 2023-06-22 00:00:00 to 2023-06-22 23:59:59', '102.213.68.161', '2025-06-27 10:32:58', '2025-06-27 10:32:58'),
-(578, 2, 1, 'product_update', 'Updated product ID: 76', '196.190.61.123', '2025-06-27 10:33:14', '2025-06-27 10:33:14'),
-(579, 1, 1, 'reports_view', 'Viewed reports & transactions from 2023-06-22 00:00:00 to 2023-06-22 23:59:59', '102.213.68.161', '2025-06-27 10:36:24', '2025-06-27 10:36:24'),
-(580, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:36:37', '2025-06-27 10:36:37'),
-(581, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:36:41', '2025-06-27 10:36:41'),
-(582, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:36:47', '2025-06-27 10:36:47'),
-(583, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-11 00:00:00 to 2025-06-11 23:59:59', '102.213.68.161', '2025-06-27 10:36:51', '2025-06-27 10:36:51'),
-(584, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:38:27', '2025-06-27 10:38:27'),
-(585, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:39:06', '2025-06-27 10:39:06'),
-(586, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:41:15', '2025-06-27 10:41:15'),
-(587, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:41:56', '2025-06-27 10:41:56'),
-(588, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:41:58', '2025-06-27 10:41:58'),
-(589, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:42:06', '2025-06-27 10:42:06'),
-(590, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:42:16', '2025-06-27 10:42:16'),
-(591, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:42:27', '2025-06-27 10:42:27'),
-(592, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:02', '2025-06-27 10:43:02'),
-(593, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:03', '2025-06-27 10:43:03'),
-(594, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:07', '2025-06-27 10:43:07'),
-(595, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:14', '2025-06-27 10:43:14'),
-(596, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:23', '2025-06-27 10:43:23'),
-(597, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:33', '2025-06-27 10:43:33'),
-(598, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:36', '2025-06-27 10:43:36'),
-(599, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:38', '2025-06-27 10:43:38'),
-(600, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:43:40', '2025-06-27 10:43:40'),
-(601, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:17', '2025-06-27 10:44:17'),
-(602, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:19', '2025-06-27 10:44:19'),
-(603, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:22', '2025-06-27 10:44:22'),
-(604, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:23', '2025-06-27 10:44:23'),
-(605, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:26', '2025-06-27 10:44:26'),
-(606, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:31', '2025-06-27 10:44:31'),
-(607, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:49', '2025-06-27 10:44:49'),
-(608, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:53', '2025-06-27 10:44:53'),
-(609, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:54', '2025-06-27 10:44:54'),
-(610, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:55', '2025-06-27 10:44:55'),
-(611, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:44:58', '2025-06-27 10:44:58'),
-(612, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:10', '2025-06-27 10:45:10'),
-(613, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:14', '2025-06-27 10:45:14'),
-(614, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:16', '2025-06-27 10:45:16'),
-(615, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:18', '2025-06-27 10:45:18'),
-(616, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:19', '2025-06-27 10:45:19'),
-(617, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:31', '2025-06-27 10:45:31'),
-(618, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:33', '2025-06-27 10:45:33'),
-(619, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:34', '2025-06-27 10:45:34'),
-(620, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.213.68.161', '2025-06-27 10:45:38', '2025-06-27 10:45:38'),
-(621, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-27 11:41:56', '2025-06-27 11:41:56'),
-(622, 2, 1, 'product_update', 'Updated product ID: 19', '196.190.61.123', '2025-06-27 11:44:40', '2025-06-27 11:44:40'),
-(623, 2, 1, 'product_update', 'Updated product ID: 20', '196.190.61.123', '2025-06-27 11:45:37', '2025-06-27 11:45:37'),
-(624, 2, 1, 'product_update', 'Updated product ID: 114', '196.190.61.123', '2025-06-27 11:47:51', '2025-06-27 11:47:51'),
-(625, 1, 1, 'login', 'User betse logged in successfully.', '102.213.69.185', '2025-06-27 12:53:14', '2025-06-27 12:53:14'),
-(626, 1, 1, 'product_sale', 'Sold 60 units of product 167', '102.218.51.229', '2025-06-27 13:09:29', '2025-06-27 13:09:29'),
-(627, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:00:45', '2025-06-27 15:00:45'),
-(628, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-21 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:01:27', '2025-06-27 15:01:27'),
-(629, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-27 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:01:30', '2025-06-27 15:01:30'),
-(630, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:01:33', '2025-06-27 15:01:33'),
-(631, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-21 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:01:38', '2025-06-27 15:01:38'),
-(632, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-05-27 00:00:00 to 2025-06-27 23:59:59', '102.218.51.239', '2025-06-27 15:01:43', '2025-06-27 15:01:43'),
-(633, 2, 1, 'product_update', 'Updated product ID: 121', '196.188.254.167', '2025-06-27 17:44:08', '2025-06-27 17:44:08'),
-(634, 2, 1, 'product_update', 'Updated product ID: 122', '196.188.254.167', '2025-06-27 17:44:41', '2025-06-27 17:44:41'),
-(635, 2, 1, 'product_update', 'Updated product ID: 123', '196.188.254.167', '2025-06-27 17:45:02', '2025-06-27 17:45:02'),
-(636, 2, 1, 'product_update', 'Updated product ID: 142', '196.188.254.167', '2025-06-27 17:50:41', '2025-06-27 17:50:41'),
-(637, 2, 1, 'product_update', 'Updated product ID: 151', '196.188.254.167', '2025-06-27 17:56:01', '2025-06-27 17:56:01'),
-(638, 2, 1, 'product_update', 'Updated product ID: 153', '196.188.254.167', '2025-06-27 17:56:12', '2025-06-27 17:56:12'),
-(639, 1, 1, 'login', 'User betse logged in successfully.', '196.188.254.167', '2025-06-27 17:59:43', '2025-06-27 17:59:43'),
-(640, 2, 1, 'product_sale', 'Sold 1 units of product 76', '196.188.254.167', '2025-06-27 18:05:46', '2025-06-27 18:05:46'),
-(641, 2, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.254.167', '2025-06-27 18:07:08', '2025-06-27 18:07:08'),
-(642, 2, 1, 'product_sale', 'Sold 2 units of product 93', '196.188.254.167', '2025-06-27 18:08:39', '2025-06-27 18:08:39');
-INSERT INTO `user_activity` (`id`, `user_id`, `organization_id`, `activity_type`, `description`, `ip_address`, `activity_time`, `created_at`) VALUES
-(643, 2, 1, 'product_sale', 'Sold 1 units of product 100', '196.188.254.167', '2025-06-27 18:09:28', '2025-06-27 18:09:28'),
-(644, 2, 1, 'product_sale', 'Sold 1 units of product 84', '196.188.254.167', '2025-06-27 18:10:44', '2025-06-27 18:10:44'),
-(645, 2, 1, 'product_sale', 'Sold 2 units of product 65', '196.188.254.167', '2025-06-27 18:11:35', '2025-06-27 18:11:35'),
-(646, 2, 1, 'product_sale', 'Sold 2 units of product 153', '196.188.254.167', '2025-06-27 18:18:09', '2025-06-27 18:18:09'),
-(647, 2, 1, 'product_sale', 'Sold 1 units of product 152', '196.188.254.167', '2025-06-27 18:20:33', '2025-06-27 18:20:33'),
-(648, 2, 1, 'product_sale', 'Sold 2 units of product 183', '196.188.254.167', '2025-06-27 18:23:42', '2025-06-27 18:23:42'),
-(649, 2, 1, 'product_sale', 'Sold 2 units of product 21', '196.188.254.167', '2025-06-27 18:27:06', '2025-06-27 18:27:06'),
-(650, 2, 1, 'product_sale', 'Sold 2 units of product 19', '196.188.254.167', '2025-06-27 18:29:49', '2025-06-27 18:29:49'),
-(651, 2, 1, 'product_sale', 'Sold 1 units of product 192', '196.188.254.167', '2025-06-27 18:31:21', '2025-06-27 18:31:21'),
-(652, 2, 1, 'product_sale', 'Sold 1 units of product 19', '196.188.254.167', '2025-06-27 18:31:41', '2025-06-27 18:31:41'),
-(653, 2, 1, 'product_sale', 'Sold 1 units of product 59', '196.188.254.167', '2025-06-27 18:32:35', '2025-06-27 18:32:35'),
-(654, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:37:15', '2025-06-27 18:37:15'),
-(655, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:38:19', '2025-06-27 18:38:19'),
-(656, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:38:24', '2025-06-27 18:38:24'),
-(657, 2, 1, 'product_update', 'Updated product ID: 32', '196.188.254.167', '2025-06-27 18:48:56', '2025-06-27 18:48:56'),
-(658, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:49:59', '2025-06-27 18:49:59'),
-(659, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:50:04', '2025-06-27 18:50:04'),
-(660, 2, 1, 'product_update', 'Updated product ID: 55', '196.188.254.167', '2025-06-27 18:51:54', '2025-06-27 18:51:54'),
-(661, 2, 1, 'product_sale', 'Sold 1 units of product 55', '196.188.254.167', '2025-06-27 18:52:14', '2025-06-27 18:52:14'),
-(662, 2, 1, 'product_sale', 'Sold 1 units of product 36', '196.188.254.167', '2025-06-27 18:54:39', '2025-06-27 18:54:39'),
-(663, 2, 1, 'product_sale', 'Sold 1 units of product 31', '196.188.254.167', '2025-06-27 18:57:04', '2025-06-27 18:57:04'),
-(664, 2, 1, 'spending_record', 'Recorded logistics spending of 200', '196.188.254.167', '2025-06-27 18:57:46', '2025-06-27 18:57:46'),
-(665, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-27 00:00:00 to 2025-06-27 23:59:59', '196.188.254.167', '2025-06-27 18:58:50', '2025-06-27 18:58:50'),
-(666, 1, 1, 'login', 'User logged in', '102.213.69.106', '2025-06-27 19:10:49', '2025-06-27 19:10:49'),
-(667, 2, 1, 'product_update', 'Updated product ID: 85', '196.191.60.167', '2025-06-28 09:35:10', '2025-06-28 09:35:10'),
-(668, 4, 1, 'product_sale', 'Sold 1 units of product 85', '196.191.61.148', '2025-06-28 09:38:28', '2025-06-28 09:38:28'),
-(669, 4, 1, 'product_sale', 'Sold 1 units of product 183', '196.191.61.148', '2025-06-28 09:43:13', '2025-06-28 09:43:13'),
-(670, 4, 1, 'product_sale', 'Sold 1 units of product 36', '196.191.61.148', '2025-06-28 09:43:46', '2025-06-28 09:43:46'),
-(671, 4, 1, 'product_sale', 'Sold 1 units of product 81', '196.191.61.148', '2025-06-28 09:46:19', '2025-06-28 09:46:19'),
-(672, 4, 1, 'product_sale', 'Sold 1 units of product 74', '196.191.61.148', '2025-06-28 09:47:06', '2025-06-28 09:47:06'),
-(673, 4, 1, 'product_sale', 'Sold 1 units of product 171', '196.191.61.148', '2025-06-28 09:47:40', '2025-06-28 09:47:40'),
-(674, 2, 1, 'product_update', 'Updated product ID: 97', '196.191.60.167', '2025-06-28 09:51:06', '2025-06-28 09:51:06'),
-(675, 2, 1, 'product_update', 'Updated product ID: 81', '196.191.60.167', '2025-06-28 09:52:53', '2025-06-28 09:52:53'),
-(676, 2, 1, 'product_update', 'Updated product ID: 81', '196.191.60.167', '2025-06-28 09:56:22', '2025-06-28 09:56:22'),
-(677, 4, 1, 'product_sale', 'Sold 1 units of product 97', '196.191.61.148', '2025-06-28 10:27:11', '2025-06-28 10:27:11'),
-(678, 4, 1, 'product_sale', 'Sold 2 units of product 31', '196.191.61.148', '2025-06-28 10:39:15', '2025-06-28 10:39:15'),
-(679, 4, 1, 'product_sale', 'Sold 1 units of product 115', '196.191.61.148', '2025-06-28 10:45:34', '2025-06-28 10:45:34'),
-(680, 4, 1, 'product_sale', 'Sold 2 units of product 192', '196.191.61.148', '2025-06-28 10:47:24', '2025-06-28 10:47:24'),
-(681, 4, 1, 'product_sale', 'Sold 1 units of product 108', '196.191.61.148', '2025-06-28 10:48:41', '2025-06-28 10:48:41'),
-(682, 4, 1, 'product_sale', 'Sold 4 units of product 157', '196.191.61.148', '2025-06-28 10:50:33', '2025-06-28 10:50:33'),
-(683, 4, 1, 'product_sale', 'Sold 1 units of product 115', '196.191.61.148', '2025-06-28 10:51:26', '2025-06-28 10:51:26'),
-(684, 4, 1, 'product_sale', 'Sold 1 units of product 182', '196.191.61.148', '2025-06-28 10:56:23', '2025-06-28 10:56:23'),
-(685, 4, 1, 'product_sale', 'Sold 1 units of product 213', '196.191.61.148', '2025-06-28 11:01:27', '2025-06-28 11:01:27'),
-(686, 4, 1, 'product_sale', 'Sold 4 units of product 151', '196.191.61.148', '2025-06-28 11:03:12', '2025-06-28 11:03:12'),
-(687, 4, 1, 'product_sale', 'Sold 1 units of product 192', '196.191.61.148', '2025-06-28 11:04:52', '2025-06-28 11:04:52'),
-(688, 4, 1, 'product_sale', 'Sold 1 units of product 31', '196.191.61.148', '2025-06-28 11:06:57', '2025-06-28 11:06:57'),
-(689, 4, 1, 'product_sale', 'Sold 1 units of product 192', '196.191.61.148', '2025-06-28 15:01:05', '2025-06-28 15:01:05'),
-(690, 4, 1, 'product_sale', 'Sold 1 units of product 193', '196.191.61.148', '2025-06-28 15:01:52', '2025-06-28 15:01:52'),
-(691, 4, 1, 'product_sale', 'Sold 1 units of product 66', '196.191.61.148', '2025-06-28 15:03:11', '2025-06-28 15:03:11'),
-(692, 4, 1, 'product_sale', 'Sold 1 units of product 94', '196.191.61.148', '2025-06-28 15:03:58', '2025-06-28 15:03:58'),
-(693, 4, 1, 'product_sale', 'Sold 2 units of product 156', '196.191.61.148', '2025-06-28 15:04:37', '2025-06-28 15:04:37'),
-(694, 4, 1, 'product_sale', 'Sold 2 units of product 64', '196.191.61.148', '2025-06-28 15:05:55', '2025-06-28 15:05:55'),
-(695, 4, 1, 'product_sale', 'Sold 1 units of product 91', '196.191.61.148', '2025-06-28 15:06:56', '2025-06-28 15:06:56'),
-(696, 4, 1, 'spending_record', 'Recorded purchase spending of 27500', '196.191.61.148', '2025-06-28 15:47:40', '2025-06-28 15:47:40'),
-(697, 4, 1, 'product_sale', 'Sold 1 units of product 59', '196.191.61.148', '2025-06-28 15:51:32', '2025-06-28 15:51:32'),
-(698, 4, 1, 'product_sale', 'Sold 1 units of product 101', '196.191.61.148', '2025-06-28 15:52:47', '2025-06-28 15:52:47'),
-(699, 4, 1, 'product_sale', 'Sold 1 units of product 94', '196.191.61.148', '2025-06-28 15:55:33', '2025-06-28 15:55:33'),
-(700, 4, 1, 'product_sale', 'Sold 1 units of product 19', '196.191.61.148', '2025-06-28 15:56:59', '2025-06-28 15:56:59'),
-(701, 4, 1, 'product_sale', 'Sold 1 units of product 66', '196.191.61.148', '2025-06-28 15:57:26', '2025-06-28 15:57:26'),
-(702, 4, 1, 'product_sale', 'Sold 2 units of product 64', '196.191.61.148', '2025-06-28 15:58:14', '2025-06-28 15:58:14'),
-(703, 4, 1, 'product_sale', 'Sold 2 units of product 165', '196.191.61.148', '2025-06-28 16:00:44', '2025-06-28 16:00:44'),
-(704, 4, 1, 'product_sale', 'Sold 1 units of product 108', '196.191.61.148', '2025-06-28 16:01:50', '2025-06-28 16:01:50'),
-(705, 4, 1, 'product_sale', 'Sold 1 units of product 32', '196.191.61.148', '2025-06-28 16:03:23', '2025-06-28 16:03:23'),
-(706, 4, 1, 'product_sale', 'Sold 1 units of product 33', '196.191.61.148', '2025-06-28 16:05:45', '2025-06-28 16:05:45'),
-(707, 4, 1, 'product_sale', 'Sold 2 units of product 65', '196.191.61.148', '2025-06-28 16:06:11', '2025-06-28 16:06:11'),
-(708, 4, 1, 'product_sale', 'Sold 1 units of product 66', '196.191.61.148', '2025-06-28 16:06:35', '2025-06-28 16:06:35'),
-(709, 4, 1, 'product_sale', 'Sold 1 units of product 202', '196.191.61.148', '2025-06-28 16:18:52', '2025-06-28 16:18:52'),
-(710, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 16:54:37', '2025-06-28 16:54:37'),
-(711, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 16:54:40', '2025-06-28 16:54:40'),
-(712, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:02:25', '2025-06-28 17:02:25'),
-(713, 4, 1, 'product_sale', 'Sold 2 units of product 142', '196.191.61.148', '2025-06-28 17:05:12', '2025-06-28 17:05:12'),
-(714, 4, 1, 'product_sale', 'Sold 2 units of product 66', '196.188.254.71', '2025-06-28 17:08:20', '2025-06-28 17:08:20'),
-(715, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:29:01', '2025-06-28 17:29:01'),
-(716, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:29:24', '2025-06-28 17:29:24'),
-(717, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:38:10', '2025-06-28 17:38:10'),
-(718, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:47:15', '2025-06-28 17:47:15'),
-(719, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 17:47:22', '2025-06-28 17:47:22'),
-(720, 1, 1, 'login', 'User betse logged in successfully.', '196.191.223.16', '2025-06-28 18:50:24', '2025-06-28 18:50:24'),
-(721, 2, 1, 'spending_record', 'Recorded consumption spending of 3500', '196.191.223.16', '2025-06-28 20:24:10', '2025-06-28 20:24:10'),
-(722, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 20:25:08', '2025-06-28 20:25:08'),
-(723, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.191.223.16', '2025-06-28 20:25:41', '2025-06-28 20:25:41'),
-(724, 1, 1, 'login', 'User betse logged in successfully.', '102.213.68.161', '2025-06-29 08:04:21', '2025-06-29 08:04:21'),
-(725, 1, 1, 'login', 'User betse logged in successfully.', '102.213.68.161', '2025-06-29 08:04:22', '2025-06-29 08:04:22'),
-(726, 1, 1, 'login', 'User betse logged in successfully.', '102.213.68.161', '2025-06-29 08:17:57', '2025-06-29 08:17:57'),
-(727, 1, 1, 'product_sale', 'Sold 3 units of product 167', '102.218.51.125', '2025-06-29 09:00:52', '2025-06-29 09:00:52'),
-(728, 1, 1, 'spending_record', 'Recorded logistics spending of 300', '102.208.96.169', '2025-06-29 09:51:52', '2025-06-29 09:51:52'),
-(729, 1, 1, 'login', 'User betse logged in successfully.', '102.208.96.169', '2025-06-29 10:00:45', '2025-06-29 10:00:45'),
-(730, 1, 1, 'login', 'User betse logged in successfully.', '102.208.96.169', '2025-06-29 10:00:45', '2025-06-29 10:00:45'),
-(731, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:00:36', '2025-06-29 15:00:36'),
-(732, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:00:42', '2025-06-29 15:00:42'),
-(733, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.188.252.158', '2025-06-29 15:00:51', '2025-06-29 15:00:51'),
-(734, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:01:18', '2025-06-29 15:01:18'),
-(735, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.188.252.158', '2025-06-29 15:01:23', '2025-06-29 15:01:23'),
-(736, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:05:43', '2025-06-29 15:05:43'),
-(737, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:05:49', '2025-06-29 15:05:49'),
-(738, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.188.252.158', '2025-06-29 15:05:52', '2025-06-29 15:05:52'),
-(739, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:12:58', '2025-06-29 15:12:58'),
-(740, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.188.252.158', '2025-06-29 15:13:03', '2025-06-29 15:13:03'),
-(741, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:18:12', '2025-06-29 15:18:12'),
-(742, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:18:15', '2025-06-29 15:18:15'),
-(743, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:18:16', '2025-06-29 15:18:16'),
-(744, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-28 00:00:00 to 2025-06-28 23:59:59', '196.188.252.158', '2025-06-29 15:18:20', '2025-06-29 15:18:20'),
-(745, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 15:37:49', '2025-06-29 15:37:49'),
-(746, 1, 1, 'login', 'User betse logged in successfully.', '196.188.252.158', '2025-06-29 19:20:35', '2025-06-29 19:20:35'),
-(747, 1, 1, 'product_sale', 'Sold 1 units of product 183', '196.188.252.158', '2025-06-29 19:35:17', '2025-06-29 19:35:17'),
-(748, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 20:07:02', '2025-06-29 20:07:02'),
-(749, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 20:10:27', '2025-06-29 20:10:27'),
-(750, 2, 1, 'product_update', 'Updated product ID: 211', '196.188.252.158', '2025-06-29 20:28:10', '2025-06-29 20:28:10'),
-(751, 2, 1, 'product_update', 'Updated product ID: 210', '196.188.252.158', '2025-06-29 20:28:40', '2025-06-29 20:28:40'),
-(752, 2, 1, 'product_update', 'Updated product ID: 209', '196.188.252.158', '2025-06-29 20:29:03', '2025-06-29 20:29:03'),
-(753, 2, 1, 'product_update', 'Updated product ID: 208', '196.188.252.158', '2025-06-29 20:30:44', '2025-06-29 20:30:44'),
-(754, 2, 1, 'product_update', 'Updated product ID: 207', '196.188.252.158', '2025-06-29 20:31:15', '2025-06-29 20:31:15'),
-(755, 2, 1, 'product_update', 'Updated product ID: 206', '196.188.252.158', '2025-06-29 20:31:54', '2025-06-29 20:31:54'),
-(756, 2, 1, 'product_update', 'Updated product ID: 205', '196.188.252.158', '2025-06-29 20:32:38', '2025-06-29 20:32:38'),
-(757, 2, 1, 'product_update', 'Updated product ID: 204', '196.188.252.158', '2025-06-29 20:33:32', '2025-06-29 20:33:32'),
-(758, 2, 1, 'product_update', 'Updated product ID: 203', '196.188.252.158', '2025-06-29 20:33:53', '2025-06-29 20:33:53'),
-(759, 2, 1, 'product_update', 'Updated product ID: 202', '196.188.252.158', '2025-06-29 20:40:22', '2025-06-29 20:40:22'),
-(760, 2, 1, 'product_update', 'Updated product ID: 201', '196.188.252.158', '2025-06-29 20:40:50', '2025-06-29 20:40:50'),
-(761, 2, 1, 'product_update', 'Updated product ID: 200', '196.188.252.158', '2025-06-29 20:41:17', '2025-06-29 20:41:17'),
-(762, 2, 1, 'product_update', 'Updated product ID: 199', '196.188.252.158', '2025-06-29 20:41:34', '2025-06-29 20:41:34'),
-(763, 2, 1, 'product_update', 'Updated product ID: 198', '196.188.252.158', '2025-06-29 20:42:39', '2025-06-29 20:42:39'),
-(764, 2, 1, 'product_update', 'Updated product ID: 197', '196.188.252.158', '2025-06-29 20:43:18', '2025-06-29 20:43:18'),
-(765, 2, 1, 'product_update', 'Updated product ID: 196', '196.188.252.158', '2025-06-29 20:43:45', '2025-06-29 20:43:45'),
-(766, 2, 1, 'product_update', 'Updated product ID: 212', '196.188.252.158', '2025-06-29 20:44:32', '2025-06-29 20:44:32'),
-(767, 2, 1, 'product_sale', 'Sold 1 units of product 206', '196.188.252.158', '2025-06-29 20:45:58', '2025-06-29 20:45:58'),
-(768, 2, 1, 'product_sale', 'Sold 1 units of product 174', '196.188.252.158', '2025-06-29 21:09:58', '2025-06-29 21:09:58'),
-(769, 2, 1, 'product_sale', 'Sold 1 units of product 19', '196.188.252.158', '2025-06-29 21:22:04', '2025-06-29 21:22:04'),
-(770, 2, 1, 'product_sale', 'Sold 2 units of product 65', '196.188.252.158', '2025-06-29 21:22:38', '2025-06-29 21:22:38'),
-(771, 2, 1, 'product_sale', 'Sold 1 units of product 73', '196.188.252.158', '2025-06-29 21:31:42', '2025-06-29 21:31:42'),
-(772, 2, 1, 'product_sale', 'Sold 10 units of product 66', '196.188.252.158', '2025-06-29 21:33:04', '2025-06-29 21:33:04'),
-(773, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 21:34:00', '2025-06-29 21:34:00'),
-(774, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.158', '2025-06-29 21:34:04', '2025-06-29 21:34:04'),
-(775, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.158', '2025-06-29 21:34:21', '2025-06-29 21:34:21'),
-(776, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 21:34:43', '2025-06-29 21:34:43'),
-(777, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.158', '2025-06-29 21:34:46', '2025-06-29 21:34:46'),
-(778, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.158', '2025-06-29 21:34:55', '2025-06-29 21:34:55'),
-(779, 4, 1, 'product_sale', 'Sold 1 units of product 81', '196.188.254.149', '2025-06-30 13:54:19', '2025-06-30 13:54:19'),
-(780, 4, 1, 'product_sale', 'Sold 1 units of product 39', '196.188.254.149', '2025-06-30 13:56:01', '2025-06-30 13:56:01'),
-(781, 4, 1, 'product_sale', 'Sold 1 units of product 71', '196.188.254.149', '2025-06-30 13:57:06', '2025-06-30 13:57:06'),
-(782, 4, 1, 'product_sale', 'Sold 1 units of product 36', '196.188.254.149', '2025-06-30 13:58:03', '2025-06-30 13:58:03'),
-(783, 4, 1, 'product_sale', 'Sold 1 units of product 37', '196.188.254.149', '2025-06-30 13:58:27', '2025-06-30 13:58:27'),
-(784, 4, 1, 'product_sale', 'Sold 1 units of product 61', '196.188.254.149', '2025-06-30 14:00:15', '2025-06-30 14:00:15'),
-(785, 4, 1, 'product_sale', 'Sold 1 units of product 183', '196.188.254.149', '2025-06-30 14:01:38', '2025-06-30 14:01:38'),
-(786, 4, 1, 'product_sale', 'Sold 1 units of product 87', '196.188.254.149', '2025-06-30 14:08:31', '2025-06-30 14:08:31'),
-(787, 4, 1, 'product_sale', 'Sold 1 units of product 50', '196.188.254.149', '2025-06-30 14:09:38', '2025-06-30 14:09:38'),
-(788, 4, 1, 'product_sale', 'Sold 1 units of product 32', '196.188.254.149', '2025-06-30 14:13:52', '2025-06-30 14:13:52'),
-(789, 4, 1, 'product_sale', 'Sold 1 units of product 70', '196.188.254.149', '2025-06-30 14:14:47', '2025-06-30 14:14:47'),
-(790, 4, 1, 'product_sale', 'Sold 1 units of product 157', '196.188.254.149', '2025-06-30 14:15:21', '2025-06-30 14:15:21'),
-(791, 4, 1, 'product_sale', 'Sold 3 units of product 95', '196.188.254.149', '2025-06-30 14:16:05', '2025-06-30 14:16:05'),
-(792, 4, 1, 'product_sale', 'Sold 1 units of product 102', '196.188.254.149', '2025-06-30 14:16:28', '2025-06-30 14:16:28'),
-(793, 4, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.254.149', '2025-06-30 14:18:15', '2025-06-30 14:18:15'),
-(794, 4, 1, 'product_sale', 'Sold 1 units of product 183', '196.188.254.149', '2025-06-30 14:19:27', '2025-06-30 14:19:27'),
-(795, 4, 1, 'product_sale', 'Sold 1 units of product 67', '196.188.254.149', '2025-06-30 14:25:49', '2025-06-30 14:25:49'),
-(796, 4, 1, 'product_sale', 'Sold 2 units of product 64', '196.188.254.149', '2025-06-30 14:26:09', '2025-06-30 14:26:09'),
-(797, 4, 1, 'product_sale', 'Sold 1 units of product 73', '196.188.254.149', '2025-06-30 14:26:35', '2025-06-30 14:26:35'),
-(798, 4, 1, 'product_sale', 'Sold 1 units of product 83', '196.188.254.149', '2025-06-30 14:27:10', '2025-06-30 14:27:10'),
-(799, 4, 1, 'product_sale', 'Sold 1 units of product 213', '196.188.254.149', '2025-06-30 14:28:08', '2025-06-30 14:28:08'),
-(800, 4, 1, 'product_sale', 'Sold 2 units of product 156', '196.188.254.149', '2025-06-30 14:28:35', '2025-06-30 14:28:35'),
-(801, 4, 1, 'product_sale', 'Sold 1 units of product 31', '196.188.254.149', '2025-06-30 14:29:14', '2025-06-30 14:29:14'),
-(802, 4, 1, 'product_sale', 'Sold 1 units of product 19', '196.188.254.149', '2025-06-30 14:32:46', '2025-06-30 14:32:46'),
-(803, 4, 1, 'product_sale', 'Sold 2 units of product 156', '196.188.254.149', '2025-06-30 14:33:25', '2025-06-30 14:33:25'),
-(804, 4, 1, 'product_sale', 'Sold 1 units of product 151', '196.188.254.149', '2025-06-30 14:34:36', '2025-06-30 14:34:36'),
-(805, 4, 1, 'product_sale', 'Sold 50 units of product 155', '196.188.254.149', '2025-06-30 14:35:12', '2025-06-30 14:35:12'),
-(806, 4, 1, 'product_sale', 'Sold 1 units of product 83', '196.188.254.149', '2025-06-30 14:36:53', '2025-06-30 14:36:53'),
-(807, 4, 1, 'product_sale', 'Sold 1 units of product 84', '196.188.254.149', '2025-06-30 14:37:32', '2025-06-30 14:37:32'),
-(808, 4, 1, 'product_sale', 'Sold 1 units of product 35', '196.188.254.149', '2025-06-30 14:38:28', '2025-06-30 14:38:28'),
-(809, 4, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.254.149', '2025-06-30 14:39:18', '2025-06-30 14:39:18'),
-(810, 4, 1, 'product_sale', 'Sold 1 units of product 74', '196.188.254.149', '2025-06-30 14:39:47', '2025-06-30 14:39:47'),
-(811, 4, 1, 'product_sale', 'Sold 1 units of product 21', '196.188.254.149', '2025-06-30 14:41:59', '2025-06-30 14:41:59'),
-(812, 4, 1, 'spending_record', 'Recorded purchase spending of 520', '196.188.254.149', '2025-06-30 14:44:07', '2025-06-30 14:44:07'),
-(813, 4, 1, 'product_sale', 'Sold 1 units of product 156', '196.188.254.149', '2025-06-30 14:44:39', '2025-06-30 14:44:39'),
-(814, 4, 1, 'product_sale', 'Sold 1 units of product 127', '196.188.254.149', '2025-06-30 14:45:06', '2025-06-30 14:45:06'),
-(815, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 15:31:43', '2025-06-30 15:31:43'),
-(816, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 15:31:46', '2025-06-30 15:31:46'),
-(817, 4, 1, 'product_sale', 'Sold 1 units of product 192', '196.188.254.149', '2025-06-30 15:37:16', '2025-06-30 15:37:16'),
-(818, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 17:05:38', '2025-06-30 17:05:38'),
-(819, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.252.43', '2025-06-30 17:09:14', '2025-06-30 17:09:14'),
-(820, 1, 1, 'product_sale', 'Sold 1 units of product 35', '196.188.252.43', '2025-06-30 17:13:59', '2025-06-30 17:13:59'),
-(821, 1, 1, 'product_sale', 'Sold 3 units of product 84', '196.188.252.43', '2025-06-30 17:17:09', '2025-06-30 17:17:09'),
-(822, 1, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.252.43', '2025-06-30 17:19:22', '2025-06-30 17:19:22'),
-(823, 1, 1, 'product_sale', 'Sold 1 units of product 93', '196.188.252.43', '2025-06-30 17:21:06', '2025-06-30 17:21:06'),
-(824, 1, 1, 'product_sale', 'Sold 1 units of product 140', '196.188.252.43', '2025-06-30 17:22:26', '2025-06-30 17:22:26'),
-(825, 1, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.252.43', '2025-06-30 17:23:31', '2025-06-30 17:23:31'),
-(826, 1, 1, 'product_sale', 'Sold 2 units of product 74', '196.188.252.43', '2025-06-30 17:24:58', '2025-06-30 17:24:58'),
-(827, 1, 1, 'product_sale', 'Sold 2 units of product 65', '196.188.252.43', '2025-06-30 17:26:46', '2025-06-30 17:26:46'),
-(828, 1, 1, 'product_sale', 'Sold 1 units of product 31', '196.188.252.43', '2025-06-30 17:28:27', '2025-06-30 17:28:27'),
-(829, 2, 1, 'product_update', 'Updated product ID: 31', '196.188.252.43', '2025-06-30 17:29:14', '2025-06-30 17:29:14'),
-(830, 1, 1, 'product_sale', 'Sold 1 units of product 81', '196.188.252.43', '2025-06-30 17:31:03', '2025-06-30 17:31:03'),
-(831, 1, 1, 'product_sale', 'Sold 1 units of product 74', '196.188.252.43', '2025-06-30 17:33:13', '2025-06-30 17:33:13'),
-(832, 1, 1, 'product_sale', 'Sold 1 units of product 152', '196.188.252.43', '2025-06-30 17:34:18', '2025-06-30 17:34:18'),
-(833, 1, 1, 'spending_record', 'Recorded purchase spending of 200', '196.188.252.43', '2025-06-30 17:34:49', '2025-06-30 17:34:49'),
-(834, 1, 1, 'product_sale', 'Sold 2 units of product 183', '196.188.252.43', '2025-06-30 17:36:56', '2025-06-30 17:36:56'),
-(835, 1, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.252.43', '2025-06-30 17:38:55', '2025-06-30 17:38:55'),
-(836, 1, 1, 'product_sale', 'Sold 1 units of product 66', '196.188.252.43', '2025-06-30 17:41:29', '2025-06-30 17:41:29'),
-(837, 1, 1, 'product_sale', 'Sold 1 units of product 36', '196.188.252.43', '2025-06-30 17:42:24', '2025-06-30 17:42:24'),
-(838, 1, 1, 'product_sale', 'Sold 1 units of product 37', '196.188.252.43', '2025-06-30 17:43:22', '2025-06-30 17:43:22'),
-(839, 1, 1, 'product_sale', 'Sold 2 units of product 11', '196.188.252.43', '2025-06-30 17:45:54', '2025-06-30 17:45:54'),
-(840, 1, 1, 'product_sale', 'Sold 2 units of product 14', '196.188.252.43', '2025-06-30 17:47:56', '2025-06-30 17:47:56'),
-(841, 1, 1, 'spending_record', 'Recorded purchase spending of 700', '196.188.252.43', '2025-06-30 17:48:37', '2025-06-30 17:48:37'),
-(842, 1, 1, 'product_sale', 'Sold 1 units of product 35', '196.188.252.43', '2025-06-30 17:49:58', '2025-06-30 17:49:58'),
-(843, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 17:58:09', '2025-06-30 17:58:09'),
-(844, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 17:58:16', '2025-06-30 17:58:16'),
-(845, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.252.43', '2025-06-30 18:00:37', '2025-06-30 18:00:37'),
-(846, 2, 1, 'spending_record', 'Recorded purchase spending of 200', '196.188.253.10', '2025-07-01 17:45:19', '2025-07-01 17:45:19'),
-(847, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-07-01 00:00:00 to 2025-07-01 23:59:59', '196.188.253.10', '2025-07-01 17:46:51', '2025-07-01 17:46:51'),
-(848, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-07-01 00:00:00 to 2025-07-01 23:59:59', '196.188.253.10', '2025-07-01 17:47:43', '2025-07-01 17:47:43'),
-(849, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-07-01 00:00:00 to 2025-07-01 23:59:59', '196.188.253.10', '2025-07-01 17:47:45', '2025-07-01 17:47:45'),
-(850, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-29 00:00:00 to 2025-06-29 23:59:59', '196.188.253.10', '2025-07-01 17:47:57', '2025-07-01 17:47:57'),
-(851, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-06-30 00:00:00 to 2025-06-30 23:59:59', '196.188.253.10', '2025-07-01 17:48:05', '2025-07-01 17:48:05'),
-(852, 1, 1, 'login', 'User betse logged in successfully.', '196.188.253.133', '2025-07-01 21:47:22', '2025-07-01 21:47:22'),
-(853, 2, 1, 'reports_view', 'Viewed reports & transactions from 2025-07-01 00:00:00 to 2025-07-01 23:59:59', '196.188.253.133', '2025-07-01 21:51:12', '2025-07-01 21:51:12'),
-(854, 1, 1, 'reports_view', 'Viewed reports & transactions from 2025-07-02 00:00:00 to 2025-07-02 23:59:59', '102.213.69.155', '2025-07-02 12:35:53', '2025-07-02 12:35:53');
-
 --
 -- Indexes for dumped tables
 --
 
 --
--- Indexes for table `ip_blocks`
+-- Indexes for table `bank_deposits`
 --
-ALTER TABLE `ip_blocks`
+ALTER TABLE `bank_deposits`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `ip_address` (`ip_address`);
-
---
--- Indexes for table `login_attempts`
---
-ALTER TABLE `login_attempts`
-  ADD PRIMARY KEY (`id`);
+  ADD KEY `fk_bank_deposits_organization` (`organization_id`),
+  ADD KEY `fk_bank_deposits_user` (`user_id`);
 
 --
 -- Indexes for table `organizations`
@@ -1548,13 +717,6 @@ ALTER TABLE `organizations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name_UNIQUE` (`name`),
   ADD KEY `owner_user_id` (`owner_user_id`);
-
---
--- Indexes for table `password_reset_tokens`
---
-ALTER TABLE `password_reset_tokens`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `products`
@@ -1571,13 +733,13 @@ ALTER TABLE `product_inventory`
   ADD KEY `product_id` (`product_id`);
 
 --
--- Indexes for table `product_transactions`
+-- Indexes for table `product_orders`
 --
-ALTER TABLE `product_transactions`
+ALTER TABLE `product_orders`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `product_id` (`product_id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `fk_product_transactions_organization` (`organization_id`);
+  ADD KEY `fk_order_user` (`user_id`),
+  ADD KEY `fk_order_organization` (`organization_id`),
+  ADD KEY `fk_order_product` (`product_id`);
 
 --
 -- Indexes for table `spendings`
@@ -1586,12 +748,6 @@ ALTER TABLE `spendings`
   ADD PRIMARY KEY (`id`),
   ADD KEY `user_id` (`user_id`),
   ADD KEY `fk_spendings_organization` (`organization_id`);
-
---
--- Indexes for table `suppliers`
---
-ALTER TABLE `suppliers`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `transactions`
@@ -1618,40 +774,20 @@ ALTER TABLE `users`
   ADD KEY `fk_users_organization` (`organization_id`);
 
 --
--- Indexes for table `user_activity`
---
-ALTER TABLE `user_activity`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `user_id` (`user_id`),
-  ADD KEY `fk_user_activity_organization` (`organization_id`);
-
---
 -- AUTO_INCREMENT for dumped tables
 --
 
 --
--- AUTO_INCREMENT for table `ip_blocks`
+-- AUTO_INCREMENT for table `bank_deposits`
 --
-ALTER TABLE `ip_blocks`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `login_attempts`
---
-ALTER TABLE `login_attempts`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=112;
+ALTER TABLE `bank_deposits`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `organizations`
 --
 ALTER TABLE `organizations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
-
---
--- AUTO_INCREMENT for table `password_reset_tokens`
---
-ALTER TABLE `password_reset_tokens`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `products`
@@ -1663,37 +799,31 @@ ALTER TABLE `products`
 -- AUTO_INCREMENT for table `product_inventory`
 --
 ALTER TABLE `product_inventory`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=260;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=261;
 
 --
--- AUTO_INCREMENT for table `product_transactions`
+-- AUTO_INCREMENT for table `product_orders`
 --
-ALTER TABLE `product_transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=165;
+ALTER TABLE `product_orders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `spendings`
 --
 ALTER TABLE `spendings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
-
---
--- AUTO_INCREMENT for table `suppliers`
---
-ALTER TABLE `suppliers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `transaction_items`
 --
 ALTER TABLE `transaction_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -1702,26 +832,21 @@ ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
--- AUTO_INCREMENT for table `user_activity`
---
-ALTER TABLE `user_activity`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=855;
-
---
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `bank_deposits`
+--
+ALTER TABLE `bank_deposits`
+  ADD CONSTRAINT `fk_bank_deposits_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_bank_deposits_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `organizations`
 --
 ALTER TABLE `organizations`
   ADD CONSTRAINT `organizations_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
-
---
--- Constraints for table `password_reset_tokens`
---
-ALTER TABLE `password_reset_tokens`
-  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `products`
@@ -1736,12 +861,12 @@ ALTER TABLE `product_inventory`
   ADD CONSTRAINT `product_inventory_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
 
 --
--- Constraints for table `product_transactions`
+-- Constraints for table `product_orders`
 --
-ALTER TABLE `product_transactions`
-  ADD CONSTRAINT `fk_product_transactions_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `product_transactions_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `product_transactions_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+ALTER TABLE `product_orders`
+  ADD CONSTRAINT `fk_order_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_order_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_order_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `spendings`
@@ -1762,13 +887,6 @@ ALTER TABLE `transaction_items`
 --
 ALTER TABLE `users`
   ADD CONSTRAINT `fk_users_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `user_activity`
---
-ALTER TABLE `user_activity`
-  ADD CONSTRAINT `fk_user_activity_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `user_activity_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

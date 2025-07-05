@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DropdownPicker from 'react-native-dropdown-picker';
 import { useAuth } from '../context/AuthContext';
 import axiosRetry from 'axios-retry'; // Import axios-retry
+import { Picker } from '@react-native-picker/picker';
 
 // Configure axios-retry for this component's API calls
 // You could also set this up globally in a dedicated axios instance file if you have one.
@@ -30,6 +31,8 @@ const SpendingScreen = () => {
   const [category, setCategory] = useState('purchase');
   const [reason, setReason] = useState('');
   const [comment, setComment] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [bankName, setBankName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -40,6 +43,8 @@ const SpendingScreen = () => {
     { label: 'Logistics', value: 'logistics' },
     { label: 'Consumption', value: 'consumption' },
   ]);
+
+  const banks = ['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr'];
 
   const handleSubmit = async () => {
     // Basic validation before attempting submission
@@ -69,6 +74,8 @@ const SpendingScreen = () => {
         category,
         reason,
         comment,
+        payment_method: paymentMethod,
+        bank_name: paymentMethod === 'bank' ? bankName : null
       };
 
       const response = await axios.post(
@@ -88,6 +95,8 @@ const SpendingScreen = () => {
         setCategory('purchase');
         setReason('');
         setComment('');
+        setPaymentMethod('cash');
+        setBankName('');
         Alert.alert('Success', 'Spending recorded successfully!'); // Changed from alert to Alert.alert
       } else {
         // If the API returns success: false, it's a server-side validation/business logic error, not a network error.
@@ -185,6 +194,44 @@ const SpendingScreen = () => {
             />
           </View>
 
+          <View style={styles.inputContainer}>
+            <Text>Payment Method:</Text>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContainer}>
+              <TouchableOpacity 
+                style={[styles.methodButton, paymentMethod === 'cash' && styles.selectedMethod]}
+                onPress={() => setPaymentMethod('cash')}>
+                <Text style={paymentMethod === 'cash' ? styles.selectedText : styles.methodText}>Cash</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.methodButton, paymentMethod === 'bank' && styles.selectedMethod]}
+                onPress={() => setPaymentMethod('bank')}>
+                <Text style={paymentMethod === 'bank' ? styles.selectedText : styles.methodText}>Bank</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+
+          {paymentMethod === 'bank' && (
+            <View style={styles.inputContainer}>
+              <Text>Select Bank:</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.scrollContainer}>
+                {banks.map(bank => (
+                  <TouchableOpacity 
+                    key={bank}
+                    style={[styles.bankButton, bankName === bank && styles.selectedBank]}
+                    onPress={() => setBankName(bank)}>
+                    <Text style={bankName === bank ? styles.selectedText : styles.methodText}>{bank}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+
           <Input
             placeholder="Reason"
             value={reason}
@@ -193,8 +240,6 @@ const SpendingScreen = () => {
             inputContainerStyle={styles.inputContainer}
             inputStyle={styles.inputText}
           />
-
-         
 
           <Button
             title="Record Spending"
@@ -358,6 +403,36 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  scrollContainer: {
+    paddingVertical: 8,
+  },
+  methodButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    marginRight: 10,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  bankButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedMethod: {
+    backgroundColor: '#4CAF50',
+  },
+  selectedBank: {
+    backgroundColor: '#4CAF50',
+  },
+  selectedText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  methodText: {
+    color: '#333',
   },
 });
 

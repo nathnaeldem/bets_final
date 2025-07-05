@@ -1,418 +1,618 @@
-// ReportsScreen.js
-import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
+// File: AnalyticsReportScreen.js
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  ScrollView, 
+  StyleSheet, 
+  ActivityIndicator, 
   Text,
-  ScrollView,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-  Dimensions,
   TouchableOpacity,
-  FlatList,
+  FlatList
 } from 'react-native';
-import { BarChart, PieChart } from 'react-native-chart-kit';
-import { Button, Icon } from 'react-native-elements';
+import { Card, Icon } from 'react-native-elements';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
-import axiosRetry from 'axios-retry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 
 const API_URL = 'https://dankula.x10.mx/auth.php';
-const screenWidth = Dimensions.get('window').width;
 
-const reportsApi = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+const analyticsApi = axios.create({ 
+  baseURL: API_URL, 
+  headers: { 'Content-Type': 'application/json' }, 
+  timeout: 15000, 
 });
 
-axiosRetry(reportsApi, {
-  retries: 3,
-  retryDelay: (count) => count * 1000,
-  retryCondition: (error) =>
-    axiosRetry.isNetworkError(error) || axiosRetry.isIdempotentRequestError(error),
-  onRetry: (count, error, cfg) =>
-    console.log(`Retry ${count} for ${cfg.url}: ${error.message}`),
-});
+const AnalyticsReportScreen = ({ navigation }) => { 
+  const { user } = useAuth(); 
+  const [loading, setLoading] = useState(true); 
+  const [error, setError] = useState(null); 
+  const [reportData, setReportData] = useState(null);
+  const [startDate, setStartDate] = useState(new Date());
+  const [endDate, setEndDate] = useState(new Date());
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
-const ReportsScreen = () => {
-  const navigation = useNavigation();
-  const [timeFilter, setTimeFilter] = useState('daily');
-  const [chartData, setChartData] = useState({ labels: [], datasets: [{ data: [] }] });
-  const [paymentData, setPaymentData] = useState({ labels: [], datasets: [{ data: [] }] });
-  const [totals, setTotals] = useState({ sales: 0, spendings: 0 });
-  const [lowStock, setLowStock] = useState([]);
-  const [trending, setTrending] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const fetchReport = async () => { 
+    setLoading(true); 
+    setError(null); 
+    try { 
+      const token = await AsyncStorage.getItem('token'); 
+      analyticsApi.defaults.headers.common['Authorization'] = `Bearer ${token}`; 
 
-  const aggregateChartData = useCallback((rawData, filterType) => {
-    if (
-      !rawData ||
-      !Array.isArray(rawData.labels) ||
-      !Array.isArray(rawData.datasets?.[0]?.data)
-    ) {
-      return rawData;
-    }
-    const labels = rawData.labels;
-    const data = rawData.datasets[0].data;
-    const newLabels = [];
-    const newData = [];
-
-    if (filterType === 'daily') {
-      // group every 4 points into one bar
-      for (let i = 0; i < labels.length; i += 4) {
-        const startIdx = i;
-        const endIdx = Math.min(i + 3, labels.length - 1);
-        const startLabel = String(labels[startIdx] ?? '');
-        const endLabel = String(labels[endIdx] ?? '');
-        newLabels.push(`${startLabel}–${endLabel}`);
-        const sumVal = data
-          .slice(startIdx, endIdx + 1)
-          .reduce((acc, v) => acc + (Number(v) || 0), 0);
-        newData.push(sumVal);
-      }
-    } else if (filterType === 'weekly') {
-      // assume raw labels are full dates → show day names
-      labels.forEach((lbl, idx) => {
-        const s = String(lbl ?? '');
-        const d = new Date(s);
-        if (!isNaN(d.getTime())) {
-          newLabels.push(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]);
-        } else {
-          newLabels.push(s.slice(0,3));
-        }
-        newData.push(Number(data[idx]) || 0);
-      });
-    } else if (filterType === 'monthly') {
-      // chop into 5 roughly-even chunks
-      const chunkSize = Math.ceil(labels.length / 5);
-      for (let i = 0; i < labels.length; i += chunkSize) {
-        const week = Math.floor(i / chunkSize) + 1;
-        newLabels.push(`Wk ${week}`);
-        const endIdx = Math.min(i + chunkSize - 1, labels.length - 1);
-        const sumVal = data
-          .slice(i, endIdx + 1)
-          .reduce((acc, v) => acc + (Number(v) || 0), 0);
-        newData.push(sumVal);
-      }
-    } else {
-      // unknown filter: pass raw through
-      return rawData;
-    }
-
-    return { labels: newLabels, datasets: [{ data: newData }] };
-  }, []);
-
-  const fetchReportData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (token) {
-        reportsApi.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      } else {
-        delete reportsApi.defaults.headers.common['Authorization'];
-        throw new Error('Authentication token not found. Please log in again.');
-      }
-
-      const { data } = await reportsApi.get('', {
-        params: { action: 'get_reports', filter: timeFilter },
+      const response = await analyticsApi.post('', {}, {
+        params: { 
+          action: 'getAnalyticsAndReports',
+          start_date: formatDate(startDate),
+          end_date: formatDate(endDate)
+        } 
       });
 
-      if (
-        data.chartData &&
-        data.totals &&
-        data.paymentData &&
-        data.lowStock &&
-        data.trendingProducts
-      ) {
-        setChartData(aggregateChartData(data.chartData, timeFilter));
-        setTotals(data.totals);
-        setPaymentData(data.paymentData);
-        setLowStock(data.lowStock);
-        setTrending(data.trendingProducts);
+      if (response.data.success) {
+        setReportData(response.data);
       } else {
-        throw new Error('Received invalid data format from server.');
+        throw new Error(response.data.message || 'Failed to fetch report');
       }
-    } catch (err) {
-      console.error('Error fetching report data:', err);
-      let msg = 'Could not fetch reports. Please check your internet connection.';
-      if (axios.isAxiosError(err)) {
-        if (err.response) {
-          msg = err.response.data?.message || `Server Error: ${err.response.status}`;
-          if (err.response.status === 401) msg = 'Session expired. Please log in again.';
-        } else if (err.request) {
-          msg = 'Network error: No response from server.';
-        } else {
-          msg = err.message;
-        }
-      } else {
-        msg = err.message;
-      }
-      setError(msg);
-      Alert.alert('Error', msg);
-    } finally {
-      setLoading(false);
+    } catch (err) { 
+      console.error('Error fetching report:', err); 
+      setError('Failed to load report. Please try again.'); 
+    } finally { 
+      setLoading(false); 
+    } 
+  };
+
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const formatCurrency = (amount) => {
+    return `ETB ${Number(amount).toFixed(2)}`;
+  };
+
+  const handleStartDateChange = (event, selectedDate) => {
+    setShowStartPicker(false);
+    if (selectedDate) {
+      setStartDate(selectedDate);
     }
-  }, [timeFilter, aggregateChartData]);
+  };
 
-  useEffect(() => {
-    fetchReportData();
-  }, [fetchReportData]);
+  const handleEndDateChange = (event, selectedDate) => {
+    setShowEndPicker(false);
+    if (selectedDate) {
+      setEndDate(selectedDate);
+    }
+  };
 
-  const renderFilterButton = (filter, title) => (
-    <TouchableOpacity style={{ flex: 1 }} onPress={() => setTimeFilter(filter)}>
-      <Text style={[styles.filterButton, timeFilter === filter && styles.activeFilter]}>
-        {title}
-      </Text>
-    </TouchableOpacity>
+  useEffect(() => { 
+    fetchReport();
+  }, []); 
+
+  // Function to render summary cards
+  const renderSummaryCard = (title, value, color = '#2d3436') => (
+    <Card containerStyle={styles.summaryCard}>
+      <Text style={styles.summaryTitle}>{title}</Text>
+      <Text style={[styles.summaryValue, { color }]}>{formatCurrency(value)}</Text>
+    </Card>
   );
 
-  const pieColors = { cash: '#2ecc71', credit: '#3498db', account_transfer: '#f1c40f' };
-  const pieChartData = paymentData.labels.map((method, idx) => ({
-    name: method.charAt(0).toUpperCase() + method.slice(1),
-    population: Number(paymentData.datasets[0].data[idx]) || 0,
-    color: pieColors[method] || '#bdc3c7',
-    legendFontColor: '#333333',
-    legendFontSize: 12,
-  }));
-
-  const renderLowStockItem = ({ item }) => (
-    <View style={styles.listItem}>
-      <Text style={styles.listItemText}>{item.name}</Text>
-      <Text style={[styles.listItemQty, { color: item.quantity === 0 ? '#e74c3c' : '#e67e22' }]}>
-        {item.quantity} left
+  // Function to render bank balance rows
+  const renderBankBalance = (bank, balance) => (
+    <View key={bank} style={styles.bankRow}>
+      <Text style={styles.bankName}>{bank}</Text>
+      <Text style={[
+        styles.bankBalance, 
+        { color: balance >= 0 ? '#00b894' : '#e17055' }
+      ]}>
+        {formatCurrency(balance)}
       </Text>
     </View>
   );
-  const renderTrendingItem = ({ item }) => (
-    <View style={styles.listItem}>
-      <Text style={styles.listItemText}>{item.name}</Text>
-      <Text style={styles.listItemQty}>{item.sold_qty} sold</Text>
+
+  // Function to render sales transaction items
+  const renderTransactionItem = ({ item }) => (
+    <View style={styles.transactionItem}>
+      <Text style={styles.productName}>{item.product_name}</Text>
+      <View style={styles.transactionDetail}>
+        <Text>{item.quantity} x {formatCurrency(item.unit_price)}</Text>
+        <Text style={styles.itemTotal}>{formatCurrency(item.quantity * item.unit_price)}</Text>
+      </View>
+      <View style={styles.transactionFooter}>
+        <Text style={styles.paymentMethod}>{item.payment_method} - {item.bank_name || 'Cash'}</Text>
+        <Text style={styles.unpaidAmount}>
+          {item.unpaid_amount > 0 ? `Unpaid: ${formatCurrency(item.unpaid_amount)}` : ''}
+        </Text>
+      </View>
     </View>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
+  // Function to render expense items
+  const renderExpenseItem = ({ item }) => (
+    <View style={styles.expenseItem}>
+      <Text style={styles.expenseReason}>{item.reason}</Text>
+      <View style={styles.expenseDetail}>
+        <Text style={styles.expenseType}>{item.type === 'spending' ? 'Expense' : 'Order'}</Text>
+        <Text style={styles.expenseAmount}>{formatCurrency(item.amount)}</Text>
       </View>
-    );
-  }
-  if (error) {
-    return (
-      <View style={styles.centeredContainer}>
-        <Icon name="error-outline" type="material" size={50} color="#e74c3c" />
-        <Text style={styles.errorText}>{error}</Text>
-        <Button title="Try Again" buttonStyle={styles.retryButton} onPress={fetchReportData} />
+      <View style={styles.expenseFooter}>
+        <Text style={styles.paymentMethod}>{item.payment_method} - {item.bank_name || 'Cash'}</Text>
       </View>
-    );
-  }
-
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.screenTitle}>Reports</Text>
-      <View style={styles.filterContainer}>
-        {renderFilterButton('daily', 'Daily')}
-        {renderFilterButton('weekly', 'Weekly')}
-        {renderFilterButton('monthly', 'Monthly')}
-      </View>
-
-      {/* Bar Chart */}
-      <View style={styles.chartContainer}>
-        <Text style={styles.chartTitle}>Sales and Spendings ({timeFilter})</Text>
-        <BarChart
-          style={{ marginVertical: 16, borderRadius: 16 }}
-          data={chartData}
-          width={screenWidth - 48}
-          height={280}
-          yAxisLabel="$"
-          chartConfig={chartConfig}
-          verticalLabelRotation={-45}
-          fromZero
-          showValuesOnTopOfBars
-          withInnerLines={false}
-        />
-      </View>
-
-      {/* Pie Chart */}
-      <View style={styles.pieContainer}>
-        <Text style={styles.chartTitle}>Payment Methods (%)</Text>
-        <PieChart
-          data={pieChartData}
-          width={screenWidth - 48}
-          height={240}
-          accessor="population"
-          backgroundColor="transparent"
-          paddingLeft="15"
-          absolute={false}
-          chartConfig={pieChartConfig}
-          center={[0, 0]}
-          hasLegend
-        />
-      </View>
-
-      {/* Detailed Reports Button */}
-      <View style={styles.detailButtonContainer}>
-        <Button
-          title="View Detailed Reports"
-          onPress={() => navigation.navigate('DetailedReports')}
-          buttonStyle={styles.detailButton}
-          icon={{ name: 'list-alt', type: 'material', color: 'white', size: 20 }}
-        />
-      </View>
-
-      {/* Low Inventory */}
-      <View style={styles.listSection}>
-        <Text style={styles.listSectionTitle}>Low Inventory (≤ 5 units)</Text>
-        {lowStock.length === 0 ? (
-          <Text style={styles.emptyText}>All products have sufficient stock.</Text>
-        ) : (
-          <FlatList
-            data={lowStock}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderLowStockItem}
-            scrollEnabled={false}
-          />
-        )}
-      </View>
-
-      {/* Trending Products */}
-      <View style={styles.listSection}>
-        <Text style={styles.listSectionTitle}>Trending Products ({timeFilter})</Text>
-        {trending.length === 0 ? (
-          <Text style={styles.emptyText}>No sales in this timeframe.</Text>
-        ) : (
-          <FlatList
-            data={trending}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderTrendingItem}
-            scrollEnabled={false}
-          />
-        )}
-      </View>
-
-      {/* Totals */}
-      <View style={styles.summaryContainer}>
-        <View style={styles.card}>
-          <Icon name="trending-up" type="material" color="#2ecc71" size={24} />
-          <Text style={styles.cardTitle}>Total Sales</Text>
-          <Text style={[styles.amount, { color: '#2ecc71' }]}>
-            ETB{totals.sales.toFixed(2)}
-          </Text>
-        </View>
-        <View style={styles.card}>
-          <Icon name="trending-down" type="material" color="#e74c3c" size={24} />
-          <Text style={styles.cardTitle}>Total Spendings</Text>
-          <Text style={[styles.amount, { color: '#e74c3c' }]}>
-            ETB{totals.spendings.toFixed(2)}
-          </Text>
-        </View>
-      </View>
-    </ScrollView>
+    </View>
   );
-};
 
-const chartConfig = {
-  backgroundColor: '#ffffff',
-  backgroundGradientFrom: '#ffffff',
-  backgroundGradientTo: '#f1f3f5',
-  decimalPlaces: 2,
-  color: () => `rgba(0, 123, 255, 1)`,
-  fillShadowGradient: '#007bff',
-  fillShadowGradientOpacity: 1,
-  labelColor: () => `rgba(33, 37, 41, 1)`,
-  style: { borderRadius: 16 },
-  propsForBackgroundLines: { stroke: '#e9ecef' },
-  barPercentage: 0.6,
-  propsForLabels: { fontSize: '12', fontWeight: '600' },
-};
+  // Function to render bank deposit items
+  const renderDepositItem = ({ item }) => (
+    <View style={styles.depositItem}>
+      <Text style={styles.depositBank}>{item.bank_name}</Text>
+      <View style={styles.depositDetail}>
+        <Text>{item.reference_number || 'No Ref'}</Text>
+        <Text style={styles.depositAmount}>{formatCurrency(item.amount)}</Text>
+      </View>
+      <Text style={styles.depositDate}>{new Date(item.deposit_date).toLocaleDateString()}</Text>
+    </View>
+  );
 
-const pieChartConfig = {
-  backgroundColor: '#ffffff',
-  backgroundGradientFrom: '#ffffff',
-  backgroundGradientTo: '#ffffff',
-  color: () => `rgba(0, 0, 0, 1)`,
-  labelColor: () => `rgba(0, 0, 0, 1)`,
-  style: { borderRadius: 16 },
-};
+  return ( 
+    <View style={styles.container}>
+      <Text style={styles.screenTitle}>Financial Analytics Report</Text>
+      
+      {/* Date Range Selector */}
+      <View style={styles.dateContainer}>
+        <TouchableOpacity 
+          style={styles.dateButton}
+          onPress={() => setShowStartPicker(true)}
+        >
+          <Text style={styles.dateText}>From: {startDate.toLocaleDateString()}</Text>
+          <Icon name="calendar" type="font-awesome" size={20} color="#3498db" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.dateButton}
+          onPress={() => setShowEndPicker(true)}
+        >
+          <Text style={styles.dateText}>To: {endDate.toLocaleDateString()}</Text>
+          <Icon name="calendar" type="font-awesome" size={20} color="#3498db" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.refreshButton}
+          onPress={fetchReport}
+        >
+          <Icon name="refresh" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 16, backgroundColor: '#f8f9fa' },
-  centeredContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  screenTitle: { fontSize: 26, fontWeight: 'bold', color: '#2d3436', marginBottom: 16 },
-  filterContainer: {
+      {/* Date Pickers */}
+      {showStartPicker && (
+        <DateTimePicker
+          value={startDate}
+          mode="date"
+          onChange={handleStartDateChange}
+        />
+      )}
+      
+      {showEndPicker && (
+        <DateTimePicker
+          value={endDate}
+          mode="date"
+          onChange={handleEndDateChange}
+        />
+      )}
+
+      {/* Loading Indicator */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3498db" />
+          <Text style={styles.loadingText}>Generating report...</Text>
+        </View>
+      )}
+
+      {/* Error Message */}
+      {error && !loading && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={fetchReport}
+          >
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Report Content */}
+      {reportData && !loading && !error && (
+        <ScrollView style={styles.reportContainer}>
+          {/* Date Range Info */}
+          <Text style={styles.dateRangeText}>
+            Report Period: {new Date(reportData.start_date).toLocaleDateString()} to {new Date(reportData.end_date).toLocaleDateString()}
+          </Text>
+          
+          {/* Financial Summary */}
+          <Card containerStyle={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Financial Summary</Text>
+            
+            <View style={styles.summaryContainer}>
+              {renderSummaryCard('Total Sales', reportData.summary.total_sales)}
+              {renderSummaryCard('Total Expenses', reportData.summary.total_expenses, '#e74c3c')}
+              {renderSummaryCard('Net Income', 
+                reportData.summary.net_income, 
+                reportData.summary.net_income >= 0 ? '#27ae60' : '#e74c3c'
+              )}
+            </View>
+          </Card>
+          
+          {/* Cash and Bank Balances */}
+          <Card containerStyle={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Cash & Bank Balances</Text>
+            
+            {/* Cash Balance */}
+            <View style={styles.balanceContainer}>
+              <Text style={styles.balanceLabel}>Cash Balance:</Text>
+              <Text style={[
+                styles.balanceValue,
+                { color: reportData.summary.cash_balance >= 0 ? '#27ae60' : '#e74c3c' }
+              ]}>
+                {formatCurrency(reportData.summary.cash_balance)}
+              </Text>
+            </View>
+            
+            {/* Bank Balances */}
+            <View style={styles.bankBalancesContainer}>
+              <Text style={styles.subSectionTitle}>Bank Balances</Text>
+              {Object.entries(reportData.summary.bank_balances).map(([bank, balance]) => 
+                renderBankBalance(bank, balance)
+              )}
+            </View>
+          </Card>
+          
+          {/* Sales by Category */}
+          <Card containerStyle={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Sales by Category</Text>
+            <View style={styles.categoryContainer}>
+              {Object.entries(reportData.summary.category_sales).map(([category, amount]) => (
+                <View key={category} style={styles.categoryRow}>
+                  <Text style={styles.categoryName}>{category}</Text>
+                  <Text style={styles.categoryAmount}>{formatCurrency(amount)}</Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+          
+          {/* Sales Transactions */}
+          <Card containerStyle={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Sales Transactions</Text>
+              <Text style={styles.countBadge}>{reportData.sales.length} transactions</Text>
+            </View>
+            <FlatList
+              data={reportData.sales}
+              renderItem={renderTransactionItem}
+              keyExtractor={(item, index) => `${item.transaction_id}_${index}`}
+              scrollEnabled={false}
+            />
+          </Card>
+          
+          {/* Expenses */}
+          <Card containerStyle={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Expenses</Text>
+              <Text style={styles.countBadge}>{reportData.expenses.length} records</Text>
+            </View>
+            <FlatList
+              data={reportData.expenses}
+              renderItem={renderExpenseItem}
+              keyExtractor={(item) => `${item.type}_${item.id}`}
+              scrollEnabled={false}
+            />
+          </Card>
+          
+          {/* Bank Deposits */}
+          <Card containerStyle={styles.sectionCard}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Bank Deposits</Text>
+              <Text style={styles.countBadge}>{reportData.deposits.length} deposits</Text>
+            </View>
+            <FlatList
+              data={reportData.deposits}
+              renderItem={renderDepositItem}
+              keyExtractor={(item) => `deposit_${item.id}`}
+              scrollEnabled={false}
+            />
+          </Card>
+          
+          <View style={styles.footerSpace} />
+        </ScrollView>
+      )}
+    </View> 
+  ); 
+}; 
+
+const styles = StyleSheet.create({ 
+  container: {
+    flex: 1,
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+  },
+  screenTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginVertical: 16,
+    textAlign: 'center',
+    color: '#2c3e50',
+  },
+  dateContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
-    backgroundColor: '#e9ecef',
+    marginBottom: 20,
+    backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 4,
+    padding: 8,
+    elevation: 2,
   },
-  filterButton: { flex: 1, paddingVertical: 12, borderRadius: 8, textAlign: 'center', color: '#6c757d', fontWeight: '600', fontSize: 15 },
-  activeFilter: {
-    backgroundColor: '#007bff',
-    color: 'white',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  chartContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+  dateButton: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    marginBottom: 32,
+    backgroundColor: '#ecf0f1',
+    borderRadius: 8,
+    padding: 10,
+    flex: 1,
+    marginHorizontal: 5,
+    justifyContent: 'space-between',
   },
-  pieContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 10,
+  dateText: {
+    fontSize: 14,
+    color: '#34495e',
+  },
+  refreshButton: {
+    backgroundColor: '#3498db',
+    borderRadius: 8,
+    padding: 10,
+    marginLeft: 10,
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-    marginBottom: 24,
+    width: 50,
   },
-  detailButtonContainer: { alignItems: 'center', marginBottom: 24 },
-  detailButton: { backgroundColor: '#6c5ce7', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8 },
-  chartTitle: { fontSize: 18, fontWeight: '600', marginBottom: 10, color: '#343a40', textTransform: 'capitalize' },
-  listSection: {
-    backgroundColor: 'white',
+  dateRangeText: {
+    textAlign: 'center',
+    marginVertical: 10,
+    color: '#7f8c8d',
+    fontSize: 16,
+  },
+  sectionCard: {
     borderRadius: 12,
     padding: 16,
-    marginBottom: 32,
+    marginBottom: 16,
+    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
   },
-  listSectionTitle: { fontSize: 17, fontWeight: '600', marginBottom: 12, color: '#2d3436' },
-  emptyText: { fontSize: 14, color: '#6c757d', textAlign: 'center', marginTop: 8 },
-  listItem: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#e9ecef' },
-  listItemText: { fontSize: 15, color: '#343a40' },
-  listItemQty: { fontSize: 15, fontWeight: '600' },
-  summaryContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 16, marginBottom: 24 },
-  card: { flex: 1, backgroundColor: 'white', borderRadius: 12, padding: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
-  cardTitle: { fontSize: 16, color: '#6c757d', fontWeight: '500', marginTop: 8 },
-  amount: { fontSize: 22, fontWeight: '700', marginTop: 4 },
-  errorText: { color: '#e74c3c', fontSize: 16, marginVertical: 20, textAlign: 'center' },
-  retryButton: { backgroundColor: '#007bff', borderRadius: 12, paddingHorizontal: 30, paddingVertical: 10 },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    color: '#2c3e50',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  countBadge: {
+    backgroundColor: '#3498db',
+    color: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 14,
+  },
+  summaryContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    marginBottom: 10,
+  },
+  summaryCard: {
+    borderRadius: 12,
+    padding: 16,
+    width: '48%',
+    marginBottom: 12,
+    backgroundColor: '#f8f9fa',
+  },
+  summaryTitle: {
+    fontSize: 16,
+    color: '#7f8c8d',
+    marginBottom: 8,
+  },
+  summaryValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  balanceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  balanceLabel: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#34495e',
+  },
+  balanceValue: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  bankBalancesContainer: {
+    marginTop: 16,
+  },
+  subSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#34495e',
+  },
+  bankRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  bankName: {
+    fontSize: 16,
+    color: '#2c3e50',
+  },
+  bankBalance: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  categoryContainer: {
+    marginTop: 10,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  categoryName: {
+    fontSize: 16,
+    color: '#2c3e50',
+  },
+  categoryAmount: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#27ae60',
+  },
+  transactionItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  productName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2c3e50',
+    marginBottom: 6,
+  },
+  transactionDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  itemTotal: {
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  transactionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  paymentMethod: {
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  unpaidAmount: {
+    color: '#e74c3c',
+    fontWeight: '500',
+    fontSize: 14,
+  },
+  expenseItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  expenseReason: {
+    fontSize: 16,
+    color: '#2c3e50',
+    marginBottom: 6,
+  },
+  expenseDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  expenseType: {
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  expenseAmount: {
+    fontWeight: 'bold',
+    color: '#e74c3c',
+  },
+  expenseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  depositItem: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1',
+  },
+  depositBank: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2c3e50',
+    marginBottom: 6,
+  },
+  depositDetail: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  depositAmount: {
+    fontWeight: 'bold',
+    color: '#3498db',
+  },
+  depositDate: {
+    fontSize: 14,
+    color: '#7f8c8d',
+    textAlign: 'right',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    marginTop: 20,
+    fontSize: 16,
+    color: '#7f8c8d',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 18,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#3498db',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  footerSpace: {
+    height: 50,
+  },
 });
 
-export default ReportsScreen;
+export default AnalyticsReportScreen;
