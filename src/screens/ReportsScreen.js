@@ -23,6 +23,7 @@ const analyticsApi = axios.create({
   timeout: 15000, 
 });
 
+
 const AnalyticsReportScreen = ({ navigation }) => { 
   const { user } = useAuth(); 
   const [loading, setLoading] = useState(true); 
@@ -40,6 +41,7 @@ const AnalyticsReportScreen = ({ navigation }) => {
       const token = await AsyncStorage.getItem('token'); 
       analyticsApi.defaults.headers.common['Authorization'] = `Bearer ${token}`; 
 
+      console.log(`Fetching report with start_date: ${formatDate(startDate)} and end_date: ${formatDate(endDate)}`);
       const response = await analyticsApi.post('', {}, {
         params: { 
           action: 'getAnalyticsAndReports',
@@ -47,6 +49,8 @@ const AnalyticsReportScreen = ({ navigation }) => {
           end_date: formatDate(endDate)
         } 
       });
+
+      console.log('Report data received:', response.data);
 
       if (response.data.success) {
         setReportData(response.data);
@@ -62,7 +66,11 @@ const AnalyticsReportScreen = ({ navigation }) => {
   };
 
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const formatCurrency = (amount) => {
@@ -84,8 +92,8 @@ const AnalyticsReportScreen = ({ navigation }) => {
   };
 
   useEffect(() => { 
-    fetchReport();
-  }, []); 
+    fetchReport(); 
+  }, [startDate, endDate]);
 
   // Function to render summary cards
   const renderSummaryCard = (title, value, color = '#2d3436') => (
