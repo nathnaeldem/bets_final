@@ -20,6 +20,7 @@ export default function CarwashTransactionManagement() {
     payment_method: null,
   });
   const [loading, setLoading]     = useState(false);
+  const [transactions, setTransactions] = useState([]);
   const [selectedBank, setSelectedBank] = useState('');
   
   // Predefined payment methods
@@ -42,7 +43,7 @@ export default function CarwashTransactionManagement() {
         if (!wRes.success) throw new Error(wRes.message || 'Failed to fetch workers');
         setWorkers(wRes.workers);
 
-        const vRes = await call('get_vehicless');
+        const vRes = await call('get_vehicles');
         if (!vRes.success) throw new Error(vRes.message || 'Failed to fetch vehicles');
         setVehicles(vRes.vehicles);
 
@@ -53,6 +54,7 @@ export default function CarwashTransactionManagement() {
       }
     };
     fetchData();
+    fetchDailyTransactions();
   }, []);
 
   // Reset bank selection when payment method changes
@@ -89,9 +91,22 @@ export default function CarwashTransactionManagement() {
       setForm({ worker_ids: [], vehicle_id: null, wash_type: 'full', payment_method: null });      // reload data
       setSelectedBank('');
       const wRes = await call('get_unpaid_workers');
-      const vRes = await call('get_vehicless');
+      const vRes = await call('get_vehicles');
       setWorkers(wRes.success ? wRes.workers : []);
       setVehicles(vRes.success ? vRes.vehicles : []);
+    } catch (e) {
+      Alert.alert('Error', e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDailyTransactions = async () => {
+    setLoading(true);
+    try {
+      const res = await call('get_daily_carwash_transactions');
+      if (!res.success) throw new Error(res.message || 'Failed to fetch daily transactions');
+      setTransactions(res.transactions);
     } catch (e) {
       Alert.alert('Error', e.message);
     } finally {
@@ -242,6 +257,35 @@ export default function CarwashTransactionManagement() {
           ))}
         </View>
       )}
+      <View style={styles.separator} />
+
+      <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+        <Text style={styles.sectionTitle}>Daily Transactions</Text>
+        <TouchableOpacity onPress={fetchDailyTransactions} style={styles.refreshButton}>
+          <Text style={styles.refreshButtonText}>Refresh</Text>
+        </TouchableOpacity>
+      </View>
+
+      {transactions.length > 0 ? (
+        <View>
+          {transactions.map((tx) => (
+            <View key={tx.id} style={styles.transactionRow}>
+              <View style={{ flex: 1, marginRight: 10 }}>
+                <Text style={styles.transactionText}>Plate: {tx.plate_number}</Text>
+                <Text style={styles.transactionDetailText}>
+                  Workers: {tx.worker_names || 'N/A'}
+                </Text>
+                <Text style={styles.transactionTimeText}>
+                  Time: {(() => { const date = new Date(tx.transaction_date); date.setHours(date.getHours() + 1); return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); })()}
+                </Text>
+              </View>
+              <Text style={styles.transactionAmountText}>{tx.amount}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.emptyListText}>No transactions for today.</Text>
+      )}
     </ScrollView>
   );
 }
@@ -385,6 +429,71 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  refreshButton: {
+    backgroundColor: '#FF9800', // Orange for refresh
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  refreshButtonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  transactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  transactionText: {
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  transactionDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  transactionTimeText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  transactionAmountText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  transactionDetailText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  transactionTimeText: {
+    fontSize: 12,
+    color: '#888',
+    marginTop: 4,
+  },
+  transactionAmountText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
   },
   emptyListText: {
     textAlign: 'center',

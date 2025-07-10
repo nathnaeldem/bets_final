@@ -1,15 +1,17 @@
 // File: AnalyticsReportScreen.js
 import React, { useState, useEffect } from 'react';
-import { 
+import {
   View, 
   ScrollView, 
   StyleSheet, 
   ActivityIndicator, 
   Text,
   TouchableOpacity,
-  FlatList
+  FlatList,
+  Dimensions
 } from 'react-native';
 import { Card, Icon } from 'react-native-elements';
+import { LineChart, PieChart } from 'react-native-chart-kit';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -95,6 +97,92 @@ const AnalyticsReportScreen = ({ navigation }) => {
     fetchReport(); 
   }, [startDate, endDate]);
 
+  const screenWidth = Dimensions.get('window').width;
+
+  const chartConfig = {
+    backgroundGradientFrom: "#fff",
+    backgroundGradientTo: "#fff",
+    color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    strokeWidth: 2,
+    barPercentage: 0.5,
+  };
+
+  const renderLineChart = () => {
+    if (!reportData?.daily_summary || reportData.daily_summary.length === 0) {
+      return null;
+    }
+
+    const data = {
+      labels: reportData.daily_summary.map(d => new Date(d.date).getDate()),
+      datasets: [
+        {
+          data: reportData.daily_summary.map(d => Number(d.sales)),
+          color: (opacity = 1) => `rgba(0, 184, 148, ${opacity})`,
+          strokeWidth: 2,
+        },
+        {
+          data: reportData.daily_summary.map(d => Number(d.expenses)),
+          color: (opacity = 1) => `rgba(225, 112, 85, ${opacity})`,
+          strokeWidth: 2,
+        },
+      ],
+      legend: ["Sales", "Expenses"],
+    };
+
+    return (
+      <Card containerStyle={styles.chartCard}>
+        <Card.Title>Sales vs Expenses Trend</Card.Title>
+        <LineChart
+          data={data}
+          width={screenWidth - 40}
+          height={220}
+          chartConfig={chartConfig}
+          bezier
+          style={styles.chart}
+        />
+      </Card>
+    );
+  };
+
+  const renderPieChart = (title, chartData, colors) => {
+    if (!chartData || Object.keys(chartData).length === 0) {
+      return null;
+    }
+
+    const data = Object.entries(chartData).map(([name, population], index) => ({
+      name,
+      population: Number(population),
+      color: colors[index % colors.length],
+      legendFontColor: '#7F7F7F',
+      legendFontSize: 15,
+    }));
+
+    return (
+      <Card containerStyle={styles.chartCard}>
+        <Card.Title>{title}</Card.Title>
+        <PieChart
+          data={data}
+          width={screenWidth - 40}
+          height={220}
+          chartConfig={chartConfig}
+          accessor={"population"}
+          backgroundColor={"transparent"}
+          absolute
+          hasLegend={false}
+        />
+        <View style={styles.legendContainer}>
+          {data.map(item => (
+            <View key={item.name} style={styles.legendItem}>
+              <View style={[styles.legendColorBox, { backgroundColor: item.color }]} />
+              <Text style={styles.legendText}>{item.name}: </Text>
+              <Text style={styles.legendValue}>{formatCurrency(item.population)}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+    );
+  };
+
   // Function to render summary cards
   const renderSummaryCard = (title, value, color = '#2d3436') => (
     <Card containerStyle={styles.summaryCard}>
@@ -126,9 +214,11 @@ const AnalyticsReportScreen = ({ navigation }) => {
       </View>
       <View style={styles.transactionFooter}>
         <Text style={styles.paymentMethod}>{item.payment_method} - {item.bank_name || 'Cash'}</Text>
-        <Text style={styles.unpaidAmount}>
-          {item.unpaid_amount > 0 ? `Unpaid: ${formatCurrency(item.unpaid_amount)}` : ''}
-        </Text>
+        {item.item_unpaid > 0 && (
+          <Text style={styles.unpaidAmount}>
+            Unpaid: {formatCurrency(item.item_unpaid)}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -249,6 +339,12 @@ const AnalyticsReportScreen = ({ navigation }) => {
             </View>
           </Card>
           
+          {/* Sales vs Expenses Trend */}
+          {renderLineChart()}
+
+          {renderPieChart("Sales by Category", reportData.summary.category_sales, ['#00b894', '#00cec9', '#55efc4', '#81ecec', '#74b9ff'])}
+          {renderPieChart("Expenses by Category", reportData.summary.expense_categories, ['#d63031', '#e17055', '#ff7675', '#fab1a0', '#fd79a8'])}
+
           {/* Cash and Bank Balances */}
           <Card containerStyle={styles.sectionCard}>
             <Text style={styles.sectionTitle}>Cash & Bank Balances</Text>
@@ -270,19 +366,6 @@ const AnalyticsReportScreen = ({ navigation }) => {
               {Object.entries(reportData.summary.bank_balances).map(([bank, balance]) => 
                 renderBankBalance(bank, balance)
               )}
-            </View>
-          </Card>
-          
-          {/* Sales by Category */}
-          <Card containerStyle={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Sales by Category</Text>
-            <View style={styles.categoryContainer}>
-              {Object.entries(reportData.summary.category_sales).map(([category, amount]) => (
-                <View key={category} style={styles.categoryRow}>
-                  <Text style={styles.categoryName}>{category}</Text>
-                  <Text style={styles.categoryAmount}>{formatCurrency(amount)}</Text>
-                </View>
-              ))}
             </View>
           </Card>
           
@@ -438,6 +521,40 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  chartCard: {
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 12,
+    backgroundColor: '#ffffff',
+  },
+  chart: {
+    marginVertical: 8,
+    borderRadius: 16,
+  },
+  legendContainer: {
+    marginTop: 15,
+    paddingHorizontal: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  legendColorBox: {
+    width: 16,
+    height: 16,
+    marginRight: 10,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 14,
+    color: '#34495e',
+  },
+  legendValue: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#2c3e50',
   },
   balanceContainer: {
     flexDirection: 'row',

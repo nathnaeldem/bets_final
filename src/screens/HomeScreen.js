@@ -68,19 +68,18 @@ const HomeScreen = ({ navigation }) => {
       }
       
       const data = await response.json();
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid data format received from server');
+
+      if (data && data.success && Array.isArray(data.transactions)) {
+        const validUnpaid = data.transactions
+          .map(tx => ({
+            ...tx,
+            unpaid_amount: parseFloat(tx.unpaid_amount) || 0
+          }))
+          .filter(tx => tx.unpaid_amount > 0);
+        setUnpaidTransactions(validUnpaid);
+      } else {
+        throw new Error(data.message || 'Invalid data format received from server');
       }
-      
-      const validUnpaid = data
-        .map(tx => ({
-          ...tx,
-          unpaid_amount: parseFloat(tx.unpaid_amount) || 0
-        }))
-        .filter(tx => tx.unpaid_amount > 0);
-        
-      setUnpaidTransactions(validUnpaid);
     } catch (error) {
       console.error("Failed to fetch unpaid transactions:", error);
       setError(error.message);
@@ -185,25 +184,30 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.headerTopRow}>
             <Text style={styles.welcomeText}>Welcome back,</Text>
             {user?.role === 'admin' && (
-              <TouchableOpacity
-                style={[
-                  styles.unpaidCounterButton,
-                  unpaidTransactions.length === 0 && styles.disabledButton
-                ]}
-                onPress={() => setShowUnpaid(true)}
-                disabled={loadingUnpaid || unpaidTransactions.length === 0}
-              >
-                {loadingUnpaid ? (
-                  <ActivityIndicator color="#e74c3c" size="small" />
-                ) : (
-                  <View style={styles.unpaidCounterInner}>
-                    <MaterialIcons name="monetization-on" size={20} color="#e74c3c" />
-                    <Text style={styles.unpaidCounterText}>
-                      {unpaidTransactions.length} Unpaid
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              <View style={styles.unpaidSection}>
+                <TouchableOpacity
+                  style={[
+                    styles.unpaidCounterButton,
+                    unpaidTransactions.length === 0 && styles.disabledButton
+                  ]}
+                  onPress={() => setShowUnpaid(true)}
+                  disabled={loadingUnpaid || unpaidTransactions.length === 0}
+                >
+                  {loadingUnpaid ? (
+                    <ActivityIndicator color="#e74c3c" size="small" />
+                  ) : (
+                    <View style={styles.unpaidCounterInner}>
+                      <MaterialIcons name="monetization-on" size={20} color="#e74c3c" />
+                      <Text style={styles.unpaidCounterText}>
+                        {unpaidTransactions.length} Unpaid
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={fetchUnpaidTransactions} style={styles.refreshButton} disabled={loadingUnpaid}>
+                  <MaterialIcons name="refresh" size={28} color="#2d3436" />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
           <Text style={styles.usernameText}>{user?.username}</Text>
@@ -383,39 +387,28 @@ const HomeScreen = ({ navigation }) => {
             ) : (
               <ScrollView style={{ width: '100%' }}>
                 {unpaidTransactions.map((item) => (
-                  <View key={item.id} style={styles.unpaidItem}>
-                    <View style={styles.transactionHeader}>
-                      <Text style={styles.transactionId}>Transaction #{item.id}</Text>
-                      <Text style={styles.transactionDate}>
+                  <View key={item.id} style={styles.unpaidCard}>
+                    <View style={styles.cardHeader}>
+                      <RNText style={styles.customerName}>{item.customer_name || 'Unknown Customer'}</RNText>
+                      <RNText style={styles.transactionDate}>
                         {new Date(item.transaction_date).toLocaleDateString()}
-                      </Text>
+                      </RNText>
                     </View>
-                    <Text style={styles.unpaidAmount}>
-                      ETB{(parseFloat(item.unpaid_amount || 0)).toFixed(2)}
-                    </Text>
-                    {item.comment && (
-                     <View >
-                        <Text style={styles.unpaidComment}>
-                        Customer: {item.comment}
-                        
-                      </Text>
-                      
-                     </View>
-                    )}
-                    <View style={styles.buttonRow}>
-                      <TextInput
-                        style={styles.paymentInput}
-                        placeholder="Enter amount"
-                        placeholderTextColor="#888"
-                        value={paymentAmount}
-                        onChangeText={(text) => setPaymentAmount(text)}
-                      />
-                      <Button
-                        title="Payment Received"
-                        buttonStyle={styles.partialButton}
-                        titleStyle={styles.buttonText}
-                        onPress={() => handlePayUnpaid(item.id, parseFloat(paymentAmount || 50))}
-                      />
+                    <View style={styles.cardBody}>
+                      <RNText style={styles.amountLabel}>Amount Due</RNText>
+                      <RNText style={styles.unpaidAmount}>
+                        ETB {parseFloat(item.unpaid_amount || 0).toFixed(2)}
+                      </RNText>
+                    </View>
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity style={[styles.actionButton, styles.partialButton]} onPress={() => openPartialPayment(item)}>
+                        <MaterialIcons name="payment" size={20} color="#fff" />
+                        <RNText style={styles.actionButtonText}>Pay Partial</RNText>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.actionButton, styles.payButton]} onPress={() => handlePayUnpaid(item.id, item.unpaid_amount)}>
+                        <MaterialIcons name="done-all" size={20} color="#fff" />
+                        <RNText style={styles.actionButtonText}>Pay Full</RNText>
+                      </TouchableOpacity>
                     </View>
                   </View>
                 ))}
@@ -517,6 +510,10 @@ const styles = StyleSheet.create({
     color: '#2d3436',
     fontWeight: '300',
   },
+  unpaidSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   unpaidCounterButton: {
     backgroundColor: '#fde2e2',
     borderRadius: 20,
@@ -524,6 +521,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: '#e74c3c',
+  },
+  refreshButton: {
+    marginLeft: 12,
+    padding: 4,
   },
   disabledButton: {
     opacity: 0.6,
@@ -698,57 +699,74 @@ const styles = StyleSheet.create({
     color: '#636e72',
     marginVertical: 20,
   },
-  unpaidItem: {
+  unpaidCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 8,
-    width: '100%',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  transactionHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    paddingBottom: 12,
+    marginBottom: 12,
   },
-  transactionId: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2d3436',
-  },
-  transactionDate: {
-    fontSize: 14,
-    color: '#636e72',
-  },
-  unpaidAmount: {
+  customerName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#e74c3c',
-    marginBottom: 8,
+    color: '#2c3e50',
   },
-  unpaidComment: {
+  transactionDate: {
+    fontSize: 13,
+    color: '#7f8c8d',
+  },
+  cardBody: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  amountLabel: {
     fontSize: 14,
-    color: '#636e72',
-    marginBottom: 12,
-    fontStyle: 'italic',
+    color: '#95a5a6',
+    marginBottom: 4,
   },
-  buttonRow: {
+  unpaidAmount: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#e74c3c',
+  },
+  cardActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    justifyContent: 'space-around',
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    flex: 1,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
   payButton: {
-    backgroundColor: '#00b894',
-    borderRadius: 8,
-    paddingVertical: 8,
-    flex: 1,
-    marginRight: 5,
+    backgroundColor: '#27ae60',
+    marginLeft: 8,
   },
   partialButton: {
     backgroundColor: '#f39c12',
-    borderRadius: 8,
-    paddingVertical: 8,
-    flex: 1,
-    marginLeft: 5,
+    marginRight: 8,
   },
   paymentInput:{
     height: 40,

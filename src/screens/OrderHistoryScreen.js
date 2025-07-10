@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, TouchableOpacity } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text, TouchableOpacity, Alert } from 'react-native';
 import { Card, Button, Icon } from 'react-native-elements';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -132,6 +132,10 @@ const OrderHistoryScreen = ({ navigation }) => {
     </Card>
   );
 
+  const filteredOrders = orders.filter(order => 
+    statusFilter === 'all' || order.status === statusFilter
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.filterContainer}>
@@ -165,11 +169,11 @@ const OrderHistoryScreen = ({ navigation }) => {
       
       {loading ? (
         <ActivityIndicator size="large" color="#0984e3" style={styles.loader} />
-      ) : orders.length === 0 ? (
+      ) : filteredOrders.length === 0 ? (
         <Text style={styles.emptyText}>No orders found</Text>
       ) : (
         <FlatList
-          data={orders}
+          data={filteredOrders}
           renderItem={renderItem}
           keyExtractor={item => item.id.toString()}
           contentContainerStyle={styles.listContent}

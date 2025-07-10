@@ -17,7 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://dankula.x10.mx/auth.php';
+const API_URL = 'https://dankula.x10.mx/auth.php';
 const windowWidth = Dimensions.get('window').width;
 const bankOptions = ['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr', 'Check'];
 
@@ -38,6 +38,8 @@ const SalesScreen = () => {
   const [categories, setCategories] = useState([]);
   const [secondaryPaymentMethod, setSecondaryPaymentMethod] = useState('cash');
   const [secondarySelectedBank, setSecondarySelectedBank] = useState('');
+  const [dailySales, setDailySales] = useState([]);
+  const [showDailySales, setShowDailySales] = useState(false);
 
   // Fetch products from API
   const fetchProducts = async () => {
@@ -77,8 +79,32 @@ const SalesScreen = () => {
     }
   };
 
+  const fetchDailySales = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await axios.post(
+        API_URL,
+        {},
+        {
+          params: { action: 'get_daily_sales' },
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (response.data.success) {
+        setDailySales(response.data.sales);
+      } else {
+        Alert.alert('Error', response.data.message || 'Failed to fetch daily sales.');
+      }
+    } catch (error) {
+      console.error('Fetch daily sales error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred while fetching daily sales.';
+      Alert.alert('Error', errorMessage);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchDailySales();
   }, []);
 
   useEffect(() => {
@@ -392,6 +418,29 @@ const SalesScreen = () => {
 
   return (
     <View style={styles.container}>
+        <TouchableOpacity style={styles.toggleButton} onPress={() => setShowDailySales(!showDailySales)}>
+          <Text style={styles.toggleButtonText}>{showDailySales ? 'Hide' : 'Show'} Daily Sales</Text>
+        </TouchableOpacity>
+
+        {showDailySales && (
+          <View style={styles.dailySalesContainer}>
+            <Text style={styles.sectionTitle}>Today's Sales</Text>
+            <FlatList
+              data={dailySales}
+              keyExtractor={(item) => item.transaction_item_id.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.salesItem}>
+                  <Text style={styles.salesItemText}>{item.product_name}</Text>
+                  <Text style={styles.salesItemText}>Qty: {item.quantity}</Text>
+                  <Text style={styles.salesItemText}>Price: {item.price}</Text>
+                  <Text style={styles.salesItemText}>Total: {item.total_amount}</Text>
+                </View>
+              )}
+              ListEmptyComponent={<Text>No sales recorded for today.</Text>}
+            />
+          </View>
+        )}
+
       <View style={styles.searchRow}>
         <TextInput
           style={styles.searchInput}
@@ -460,7 +509,7 @@ const SalesScreen = () => {
               />
               <View style={styles.totalContainer}>
                 <Text style={styles.totalLabel}>Total:</Text>
-                <Text style={styles.totalAmount}>{calculateTotal()} ETB</Text>
+                <Text style={styles.totalAmount}>ETB {calculateTotal()}</Text>
               </View>
             </View>
           )}
@@ -487,6 +536,7 @@ const SalesScreen = () => {
             />
           )}
         </View>
+
       </ScrollView>
 
       {/* Fixed Action Buttons at Bottom */}
@@ -870,6 +920,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4A90E2',
     marginBottom: 5,
+  },
+  toggleButton: {
+    backgroundColor: '#4A90E2',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+    alignSelf: 'center',
+    width: '90%',
+    maxWidth: 350,
+  },
+  toggleButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dailySalesContainer: {
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  salesItem: {
+    backgroundColor: '#fff',
+    padding: 10,
+    marginVertical: 5,
+    borderRadius: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  salesItemText: {
+    fontSize: 14,
   },
 });
 

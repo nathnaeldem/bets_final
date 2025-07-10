@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Jul 05, 2025 at 08:46 AM
+-- Generation Time: Jul 09, 2025 at 03:10 PM
 -- Server version: 10.6.16-MariaDB-cll-lve
 -- PHP Version: 7.4.33
 
@@ -41,12 +41,56 @@ CREATE TABLE `bank_deposits` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `bank_deposits`
+-- Table structure for table `carwash_transactions`
 --
 
-INSERT INTO `bank_deposits` (`id`, `user_id`, `organization_id`, `bank_name`, `account_number`, `amount`, `deposit_date`, `reference_number`, `comment`, `created_at`) VALUES
-(1, 1, 1, 'Awash', '29', '50000.00', '2025-07-02', '', '', '2025-07-02 12:57:28');
+CREATE TABLE `carwash_transactions` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `worker_id` int(11) NOT NULL,
+  `worker_ids` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`worker_ids`)),
+  `vehicle_id` int(11) NOT NULL,
+  `tariff` decimal(10,2) NOT NULL,
+  `commission_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `transaction_date` datetime NOT NULL,
+  `payment_method` varchar(40) NOT NULL,
+  `bank_name` varchar(20) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `carwash_transactions`
+--
+
+INSERT INTO `carwash_transactions` (`id`, `organization_id`, `user_id`, `worker_id`, `worker_ids`, `vehicle_id`, `tariff`, `commission_amount`, `transaction_date`, `payment_method`, `bank_name`) VALUES
+(27, 1, 1, 3, '[\"3\",\"4\",\"5\"]', 4, '500.00', '175.00', '2025-07-09 15:09:35', 'Bank', 'Awash');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `car_spendings`
+--
+
+CREATE TABLE `car_spendings` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `category` enum('purchase','logistics','consumption') NOT NULL,
+  `reason` varchar(255) NOT NULL,
+  `comment` text DEFAULT NULL,
+  `transaction_date` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `car_spendings`
+--
+
+INSERT INTO `car_spendings` (`id`, `user_id`, `organization_id`, `amount`, `category`, `reason`, `comment`, `transaction_date`) VALUES
+(9, 2, 1, '200.00', 'purchase', 'La amchi dube', '', '2025-07-01 17:45:19');
 
 -- --------------------------------------------------------
 
@@ -68,6 +112,57 @@ CREATE TABLE `organizations` (
 INSERT INTO `organizations` (`id`, `name`, `created_at`, `owner_user_id`) VALUES
 (1, 'Betse Spare Parts', '2025-06-10 13:10:12', 1),
 (2, 'habte_coca', '2025-06-23 14:40:38', 5);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `paid_commissions`
+--
+
+CREATE TABLE `paid_commissions` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `worker_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `paid_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `paid_commissions`
+--
+
+INSERT INTO `paid_commissions` (`id`, `organization_id`, `worker_id`, `amount`, `paid_at`) VALUES
+(21, 1, 4, '58.33', '2025-07-09 15:09:40');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `paid_commission_transactions`
+--
+
+CREATE TABLE `paid_commission_transactions` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `worker_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `paid_date` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `password_reset_tokens`
+--
+
+CREATE TABLE `password_reset_tokens` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `token` varchar(64) NOT NULL,
+  `token_hash` varchar(255) NOT NULL,
+  `expiry` datetime NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -321,7 +416,7 @@ CREATE TABLE `product_inventory` (
 --
 
 INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `status_changed_at`, `created_at`) VALUES
-(12, 12, 3, 'in_store', '2025-07-02 17:35:02', '2025-06-14 14:51:51'),
+(12, 12, 5, 'in_store', '2025-07-02 17:35:02', '2025-06-14 14:51:51'),
 (13, 13, 1, 'in_store', '2025-07-01 14:49:35', '2025-06-14 14:53:33'),
 (14, 14, 0, 'in_store', '2025-06-30 17:47:56', '2025-06-14 18:31:09'),
 (16, 16, 0, 'in_store', '2025-06-24 17:11:05', '2025-06-14 18:47:36'),
@@ -524,14 +619,14 @@ INSERT INTO `product_inventory` (`id`, `product_id`, `quantity`, `status`, `stat
 (250, 19, 23, 'in_store', '2025-06-30 14:32:46', '2025-06-28 21:30:43'),
 (251, 43, 23, 'in_store', '2025-06-28 21:36:44', '2025-06-28 21:36:44'),
 (252, 223, 10, 'in_store', '2025-07-02 07:45:19', '2025-07-02 07:45:19'),
-(253, 224, 2975, 'in_store', '2025-07-02 10:37:56', '2025-07-02 10:37:56'),
-(254, 225, 325, 'in_store', '2025-07-02 10:38:22', '2025-07-02 10:38:22'),
+(253, 224, 2942, 'in_store', '2025-07-02 10:37:56', '2025-07-02 10:37:56'),
+(254, 225, 302, 'in_store', '2025-07-02 10:38:22', '2025-07-02 10:38:22'),
 (255, 12, 3, 'in_store', '2025-07-02 17:35:02', '2025-07-02 11:04:57'),
 (256, 14, 2, 'in_store', '2025-07-02 11:06:08', '2025-07-02 11:06:08'),
 (257, 165, 9, 'in_store', '2025-07-02 11:27:19', '2025-07-02 11:27:19'),
 (258, 134, 2, 'in_store', '2025-07-02 11:38:43', '2025-07-02 11:38:43'),
 (259, 135, 2, 'in_store', '2025-07-02 11:43:59', '2025-07-02 11:43:59'),
-(260, 11, 6, 'in_store', '2025-07-05 10:50:20', '2025-07-05 10:50:20');
+(260, 11, 91, 'in_store', '2025-07-05 10:50:20', '2025-07-05 10:50:20');
 
 -- --------------------------------------------------------
 
@@ -562,9 +657,7 @@ CREATE TABLE `product_orders` (
 --
 
 INSERT INTO `product_orders` (`id`, `user_id`, `organization_id`, `product_id`, `product_name`, `quantity`, `ordered_price`, `selling_price`, `payment_method`, `bank_name`, `paid_amount`, `unpaid_amount`, `status`, `created_at`, `received_at`) VALUES
-(1, 1, 1, 11, 'Battery 60Am', 7, '11000.50', '11500.00', 'bank', 'Awash', '77003.50', '0.00', 'received', '2025-07-05 10:04:20', '2025-07-05 10:05:19'),
-(2, 1, 1, 11, 'Battery 60Am', 10, '11000.50', '11500.00', 'mixed', 'Awash', '50000.00', '60005.00', 'received', '2025-07-05 10:08:14', '2025-07-05 10:09:23'),
-(3, 1, 1, 11, 'Battery 60Am', 50, '11000.50', '11500.00', 'bank', 'Awash', '550025.00', '0.00', 'received', '2025-07-05 10:49:08', '2025-07-05 10:49:18');
+(11, 1, 1, 12, 'Battery 90Am', 2, '15500.00', '16000.00', 'bank', 'CBE', '0.00', '31000.00', 'ordered', '2025-07-09 14:24:44', NULL);
 
 -- --------------------------------------------------------
 
@@ -592,7 +685,21 @@ CREATE TABLE `spendings` (
 INSERT INTO `spendings` (`id`, `user_id`, `organization_id`, `amount`, `category`, `reason`, `comment`, `transaction_date`, `payment_method`, `bank_name`) VALUES
 (20, 1, 1, '832.00', 'purchase', 'Mega', '', '2025-07-03 09:42:30', 'bank', 'Awash'),
 (21, 1, 1, '50000.00', 'purchase', 'Credit payment for order #1 (Battery 60Am)', NULL, '2025-07-05 10:14:48', 'bank', 'Awash'),
-(22, 1, 1, '27003.50', 'purchase', 'Credit payment for order #1 (Battery 60Am)', NULL, '2025-07-05 10:26:42', 'bank', 'Awash');
+(22, 1, 1, '27003.50', 'purchase', 'Credit payment for order #1 (Battery 60Am)', NULL, '2025-07-05 10:26:42', 'bank', 'Awash'),
+(29, 1, 1, '0.00', 'purchase', 'Credit payment of 215010.00 ETB for order #7 (Battery 60Am)', NULL, '2025-07-07 09:27:51', 'bank', 'Awash');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `suppliers`
+--
+
+CREATE TABLE `suppliers` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `contact_email` varchar(255) DEFAULT NULL,
+  `lead_time` int(11) DEFAULT 7
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
 
@@ -617,16 +724,7 @@ CREATE TABLE `transactions` (
 --
 
 INSERT INTO `transactions` (`id`, `user_id`, `organization_id`, `payment_method`, `bank_name`, `comment`, `unpaid_amount`, `customer_name`, `transaction_date`) VALUES
-(1, 1, 1, 'cash', '', '', '0.00', '', '2025-07-01 08:47:47'),
-(2, 1, 1, 'cash', '', '', '0.00', '', '2025-07-01 10:49:35'),
-(3, 1, 1, 'cash', '', '', '0.00', '', '2025-07-01 21:04:34'),
-(4, 1, 1, 'cash', '', '', '0.00', '', '2025-07-01 21:06:59'),
-(5, 1, 1, 'cash', '', '', '0.00', '', '2025-07-02 07:25:36'),
-(6, 1, 1, 'credit', 'Awash', '', '355.00', 'Asefa', '2025-07-02 07:26:51'),
-(7, 1, 1, 'bank', 'Awash', '', '0.00', '', '2025-07-02 07:30:07'),
-(8, 1, 1, 'cash', '', '', '0.00', '', '2025-07-02 08:10:42'),
-(9, 1, 1, 'cash', '', '', '0.00', '', '2025-07-03 04:46:57'),
-(10, 1, 1, 'credit', '', '', '300.00', 'Anb', '2025-07-03 04:47:16');
+(18, 1, 1, 'credit', '', '', '500.00', 'Abera aleso', '2025-07-09 15:06:34');
 
 -- --------------------------------------------------------
 
@@ -647,26 +745,8 @@ CREATE TABLE `transaction_items` (
 --
 
 INSERT INTO `transaction_items` (`id`, `transaction_id`, `product_id`, `quantity`, `unit_price`) VALUES
-(1, 1, 26, 1, '3400.00'),
-(2, 1, 111, 1, '1300.00'),
-(3, 1, 113, 1, '1300.00'),
-(4, 2, 11, 2, '11500.00'),
-(5, 2, 13, 2, '7700.00'),
-(6, 3, 167, 1, '4699.00'),
-(7, 4, 167, 2, '4699.00'),
-(8, 4, 11, 1, '11500.00'),
-(9, 5, 224, 1, '400.00'),
-(10, 5, 225, 1, '4500.00'),
-(11, 6, 224, 1, '400.00'),
-(12, 6, 225, 1, '4500.00'),
-(13, 7, 224, 17, '400.00'),
-(14, 7, 225, 16, '4500.00'),
-(15, 8, 224, 4, '425.00'),
-(16, 8, 225, 5, '4500.00'),
-(17, 9, 224, 1, '400.00'),
-(18, 9, 225, 1, '4500.00'),
-(19, 10, 224, 1, '400.00'),
-(20, 10, 225, 1, '4500.00');
+(35, 18, 224, 1, '400.00'),
+(36, 18, 225, 1, '4500.00');
 
 -- --------------------------------------------------------
 
@@ -691,12 +771,78 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `email`, `password`, `role`, `is_active`, `organization_id`, `created_at`, `last_login`) VALUES
-(1, 'betse', 'degi@gmail.com', '$2a$12$vAwnhpOnDxPL3jVHc9X7kOCGYA.AZltZcZSowB2gLV1vtR2ykLhjq', 'admin', 1, 1, '2025-06-10 13:10:12', '2025-07-03 13:55:50'),
+(1, 'betse', 'degi@gmail.com', '$2a$12$vAwnhpOnDxPL3jVHc9X7kOCGYA.AZltZcZSowB2gLV1vtR2ykLhjq', 'admin', 1, 1, '2025-06-10 13:10:12', '2025-07-09 14:41:24'),
 (2, 'bire', 'bire@gmail.com', '$2y$10$8AyuEpVhp7ETo9zUiu1xsOfCFuvK8EfP56ryGtM/bhxVBbru.pdm6', 'admin', 1, 1, '2025-06-10 13:59:01', '2025-06-26 12:36:29'),
 (3, 'mekdes', 'a@d.c', '$2y$10$DlLfgiHhUaUhFEtUBBgfOu5o2qFU5CNhmAqF77YeO.LRczyYZJhRS', 'worker', 1, 1, '2025-06-12 05:28:24', '2025-06-14 13:13:29'),
-(4, 'sanbu', 'n@g.c', '$2a$12$U1QBp2.ESjfbpTVoHTfwSeySKRFjUjJLXfZ/5Ob781pzfncX1gdsq', 'user', 1, 1, '2025-06-12 07:43:14', '2025-06-26 13:46:59'),
+(4, 'sanbu', 'n@g.c', '$2a$12$U1QBp2.ESjfbpTVoHTfwSeySKRFjUjJLXfZ/5Ob781pzfncX1gdsq', 'user', 1, 1, '2025-06-12 07:43:14', '2025-07-07 12:57:09'),
 (5, 'habte', 'habtsh@gmail.com', '$2a$12$5Cl.HwuQJJh/bs1nvUcdo.g/Lj4i5eCNOTa9XViiIPxI2ths.D.dm', 'admin', 1, 2, '2025-06-23 14:40:38', '2025-06-23 15:13:06'),
 (6, 'temesgen', 'Stire@gmail.com', '$2y$10$ESWFaKMu89r74Lw.wTB2rO5erX4U1NdUGUBl0BcUbwQlRPUrx.QkK', 'user', 1, 2, '2025-06-23 15:05:24', '2025-06-23 15:05:47');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `vehicles`
+--
+
+CREATE TABLE `vehicles` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `tariff` decimal(10,2) NOT NULL,
+  `partial_tariff` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `vehicles`
+--
+
+INSERT INTO `vehicles` (`id`, `organization_id`, `name`, `tariff`, `partial_tariff`, `created_at`) VALUES
+(2, 1, 'Isuzu የህዝብ', '500.00', '400.00', '2025-06-12 06:18:59'),
+(4, 1, 'FSR ጭነት', '500.00', '400.00', '2025-06-14 09:28:17'),
+(5, 1, 'ሲኖ ትራክ', '600.00', '500.00', '2025-06-14 09:53:47'),
+(6, 1, 'አውቶብስ 63 ወንበር', '700.00', '500.00', '2025-06-14 09:54:54'),
+(7, 1, 'ትራምፕ (ከሶኒ)', '700.00', '500.00', '2025-06-14 09:55:42'),
+(8, 1, 'ማርቼዲስ ገልባጭ', '500.00', '400.00', '2025-06-14 09:56:39'),
+(9, 1, 'Isuzu የጭነት', '400.00', '300.00', '2025-06-14 09:57:28'),
+(10, 1, 'ዶልፊን', '250.00', '200.00', '2025-06-14 09:58:02'),
+(11, 1, 'ሀይሩፍ', '250.00', '200.00', '2025-06-14 09:58:18'),
+(12, 1, 'ሚኒባስ', '250.00', '200.00', '2025-06-14 09:58:42'),
+(13, 1, 'Hilux', '250.00', '200.00', '2025-06-14 09:59:09'),
+(14, 1, 'Land cruizer', '250.00', '200.00', '2025-06-14 09:59:24'),
+(15, 1, 'Corolla', '200.00', '150.00', '2025-06-14 09:59:49'),
+(16, 1, 'Bajaj', '200.00', '150.00', '2025-06-14 10:00:05'),
+(17, 1, 'ሞተር motor', '80.00', '80.00', '2025-06-14 10:00:26'),
+(19, 1, 'FSR የህዝብ', '600.00', '500.00', '2025-06-29 15:39:45');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `workers`
+--
+
+CREATE TABLE `workers` (
+  `id` int(11) NOT NULL,
+  `organization_id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `paid_commission` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `unpaid_commission` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `workers`
+--
+
+INSERT INTO `workers` (`id`, `organization_id`, `name`, `paid_commission`, `unpaid_commission`, `created_at`) VALUES
+(3, 1, 'NIGUSE', '0.00', '58.33', '2025-06-14 09:48:10'),
+(4, 1, 'Alex', '58.33', '0.00', '2025-06-14 09:48:25'),
+(5, 1, 'Barich achiru', '0.00', '58.33', '2025-06-14 09:48:44'),
+(6, 1, 'Amanchi', '0.00', '0.00', '2025-06-14 09:48:53'),
+(7, 1, 'Misge boss', '0.00', '0.00', '2025-06-14 09:49:06'),
+(8, 1, 'Abeni', '0.00', '0.00', '2025-06-14 09:49:18'),
+(10, 1, 'Barich binyam', '0.00', '0.00', '2025-06-14 09:51:27'),
+(11, 1, 'Israel', '0.00', '0.00', '2025-06-14 09:51:37');
 
 --
 -- Indexes for dumped tables
@@ -711,12 +857,54 @@ ALTER TABLE `bank_deposits`
   ADD KEY `fk_bank_deposits_user` (`user_id`);
 
 --
+-- Indexes for table `carwash_transactions`
+--
+ALTER TABLE `carwash_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_cwt_organization` (`organization_id`),
+  ADD KEY `fk_cwt_user` (`user_id`),
+  ADD KEY `fk_cwt_worker` (`worker_id`),
+  ADD KEY `fk_cwt_vehicle` (`vehicle_id`);
+
+--
+-- Indexes for table `car_spendings`
+--
+ALTER TABLE `car_spendings`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `fk_car_spendings_organization` (`organization_id`);
+
+--
 -- Indexes for table `organizations`
 --
 ALTER TABLE `organizations`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `name_UNIQUE` (`name`),
   ADD KEY `owner_user_id` (`owner_user_id`);
+
+--
+-- Indexes for table `paid_commissions`
+--
+ALTER TABLE `paid_commissions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_pc_organization` (`organization_id`),
+  ADD KEY `fk_pc_worker` (`worker_id`);
+
+--
+-- Indexes for table `paid_commission_transactions`
+--
+ALTER TABLE `paid_commission_transactions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `organization_id` (`organization_id`),
+  ADD KEY `worker_id` (`worker_id`),
+  ADD KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`);
 
 --
 -- Indexes for table `products`
@@ -750,6 +938,12 @@ ALTER TABLE `spendings`
   ADD KEY `fk_spendings_organization` (`organization_id`);
 
 --
+-- Indexes for table `suppliers`
+--
+ALTER TABLE `suppliers`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `transactions`
 --
 ALTER TABLE `transactions`
@@ -774,6 +968,20 @@ ALTER TABLE `users`
   ADD KEY `fk_users_organization` (`organization_id`);
 
 --
+-- Indexes for table `vehicles`
+--
+ALTER TABLE `vehicles`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_vehicles_organization` (`organization_id`);
+
+--
+-- Indexes for table `workers`
+--
+ALTER TABLE `workers`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_workers_organization` (`organization_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -781,13 +989,43 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `bank_deposits`
 --
 ALTER TABLE `bank_deposits`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT for table `carwash_transactions`
+--
+ALTER TABLE `carwash_transactions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+
+--
+-- AUTO_INCREMENT for table `car_spendings`
+--
+ALTER TABLE `car_spendings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- AUTO_INCREMENT for table `organizations`
 --
 ALTER TABLE `organizations`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `paid_commissions`
+--
+ALTER TABLE `paid_commissions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+
+--
+-- AUTO_INCREMENT for table `paid_commission_transactions`
+--
+ALTER TABLE `paid_commission_transactions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `products`
@@ -805,7 +1043,7 @@ ALTER TABLE `product_inventory`
 -- AUTO_INCREMENT for table `product_orders`
 --
 ALTER TABLE `product_orders`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `spendings`
@@ -814,22 +1052,40 @@ ALTER TABLE `spendings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `suppliers`
+--
+ALTER TABLE `suppliers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `transactions`
 --
 ALTER TABLE `transactions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `transaction_items`
 --
 ALTER TABLE `transaction_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `vehicles`
+--
+ALTER TABLE `vehicles`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+
+--
+-- AUTO_INCREMENT for table `workers`
+--
+ALTER TABLE `workers`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- Constraints for dumped tables
@@ -843,10 +1099,47 @@ ALTER TABLE `bank_deposits`
   ADD CONSTRAINT `fk_bank_deposits_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `carwash_transactions`
+--
+ALTER TABLE `carwash_transactions`
+  ADD CONSTRAINT `fk_cwt_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cwt_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cwt_vehicle` FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles` (`id`),
+  ADD CONSTRAINT `fk_cwt_worker` FOREIGN KEY (`worker_id`) REFERENCES `workers` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `car_spendings`
+--
+ALTER TABLE `car_spendings`
+  ADD CONSTRAINT `car_spendings_user_fk` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_car_spendings_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `organizations`
 --
 ALTER TABLE `organizations`
   ADD CONSTRAINT `organizations_ibfk_1` FOREIGN KEY (`owner_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `paid_commissions`
+--
+ALTER TABLE `paid_commissions`
+  ADD CONSTRAINT `fk_pc_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_pc_worker` FOREIGN KEY (`worker_id`) REFERENCES `workers` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `paid_commission_transactions`
+--
+ALTER TABLE `paid_commission_transactions`
+  ADD CONSTRAINT `paid_commission_transactions_ibfk_1` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `paid_commission_transactions_ibfk_2` FOREIGN KEY (`worker_id`) REFERENCES `workers` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `paid_commission_transactions_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `password_reset_tokens`
+--
+ALTER TABLE `password_reset_tokens`
+  ADD CONSTRAINT `password_reset_tokens_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `products`
@@ -887,6 +1180,18 @@ ALTER TABLE `transaction_items`
 --
 ALTER TABLE `users`
   ADD CONSTRAINT `fk_users_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `vehicles`
+--
+ALTER TABLE `vehicles`
+  ADD CONSTRAINT `fk_vehicles_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `workers`
+--
+ALTER TABLE `workers`
+  ADD CONSTRAINT `fk_workers_organization` FOREIGN KEY (`organization_id`) REFERENCES `organizations` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -159,22 +159,9 @@ const ProductOrderScreen = ({ navigation, route }) => {
         {errors.selling_price && <Text style={styles.errorText}>{errors.selling_price}</Text>}
 
         <Text style={styles.sectionTitle}>Payment Method</Text>
-        <Picker
-          selectedValue={formData.payment_method}
-          onValueChange={(value) => {
-            setFormData((prev) => ({ ...prev, payment_method: value }));
-            if (value === 'bank') {
-              setFormData((prev) => ({ ...prev, paid_amount: calculateTotal(), unpaid_amount: '0.00' }));
-            }
-          }}
-          style={styles.picker}
-        >
-          <Picker.Item label="Bank" value="bank" />
-          <Picker.Item label="Credit" value="credit" />
-          <Picker.Item label="Mixed" value="mixed" />
-        </Picker>
+       
 
-        {(formData.payment_method === 'bank' || formData.payment_method === 'mixed') && (
+        {(formData.payment_method === 'bank') && (
           <Picker
             selectedValue={formData.bank_name}
             onValueChange={(value) => setFormData({ ...formData, bank_name: value })}
