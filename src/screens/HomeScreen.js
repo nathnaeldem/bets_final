@@ -226,13 +226,19 @@ const HomeScreen = ({ navigation }) => {
           <View style={styles.buttonGroup}>
             {user?.role === 'admin' ? (
               <>
-                {/* ADDED: Product Ordering Buttons */}
                 <Button
                   title="Place Product Order"
                   buttonStyle={styles.orderButton}
                   titleStyle={styles.buttonTitle}
                   icon={<MaterialIcons name="add-shopping-cart" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('ProductOrder')}
+                />
+                <Button
+                  title="New Transactions"
+                  buttonStyle={styles.newTransactionButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={<MaterialIcons name="receipt" size={22} color="white" style={styles.icon} />}
+                  onPress={() => navigation.navigate('NewTransactions')}
                 />
                 <Button
                   title="Order History"
@@ -250,31 +256,38 @@ const HomeScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate('ProductList')}
                 />
                 <Button
-                    title="Bank Deposit"
-                    onPress={() => navigation.navigate('BankDeposit')}
-                    buttonStyle={styles.tertiaryButton}
-                    titleStyle={styles.buttonTitle}
-                    icon={
-                      <MaterialIcons 
-                        name="account-balance" 
-                        size={24} 
-                        color="white" 
-                        style={styles.icon} 
-                      />
-                    }
-                  />
+                  title="Bank Deposit"
+                  onPress={() => navigation.navigate('BankDeposit')}
+                  buttonStyle={styles.tertiaryButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={
+                    <MaterialIcons 
+                      name="account-balance" 
+                      size={24} 
+                      color="white" 
+                      style={styles.icon} 
+                    />
+                  }
+                />
                 <Button
                   title="New Sale"
-                  buttonStyle={styles.secondaryButton}
+                  buttonStyle={styles.newSaleButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="attach-money" size={22} color="white" style={styles.icon} />}
+                  icon={<MaterialIcons name="point-of-sale" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('Sales')}
                 />
                 <Button
-                  title="Record Spending"
-                  buttonStyle={styles.tertiaryButton}
+                  title="Credit Register"
+                  buttonStyle={styles.creditRegisterButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                  icon={<MaterialIcons name="credit-card" size={22} color="white" style={styles.icon} />}
+                  onPress={() => navigation.navigate('CreditRegister')}
+                />
+                <Button
+                  title="Record Spending"
+                  buttonStyle={styles.recordSpendingButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={<MaterialIcons name="money-off" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('Spending')}
                 />
                 <Button
@@ -301,9 +314,9 @@ const HomeScreen = ({ navigation }) => {
                 />
                 <Button
                   title="Record Car Wash Spending"
-                  buttonStyle={styles.tertiaryButton}
+                  buttonStyle={styles.carWashSpendingButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                  icon={<MaterialIcons name="car-repair" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('CarWashSpendingScreen')}
                 />
                 <Button
@@ -333,11 +346,12 @@ const HomeScreen = ({ navigation }) => {
                 />
                 <Button
                   title="Record Car Wash Spending"
-                  buttonStyle={styles.tertiaryButton}
+                  buttonStyle={styles.carWashSpendingButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                  icon={<MaterialIcons name="car-repair" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('CarWashSpendingScreen')}
                 />
+               
               </>
             ) : (
               <>
@@ -349,17 +363,31 @@ const HomeScreen = ({ navigation }) => {
                   onPress={() => navigation.navigate('ProductList')}
                 />
                 <Button
-                  title="New Sale"
-                  buttonStyle={styles.secondaryButton}
+                  title="Bank Deposit"
+                  onPress={() => navigation.navigate('BankDeposit')}
+                  buttonStyle={styles.tertiaryButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="attach-money" size={22} color="white" style={styles.icon} />}
+                  icon={
+                    <MaterialIcons 
+                      name="account-balance" 
+                      size={24} 
+                      color="white" 
+                      style={styles.icon} 
+                    />
+                  }
+                />
+                <Button
+                  title="New Sale"
+                  buttonStyle={styles.newSaleButton}
+                  titleStyle={styles.buttonTitle}
+                  icon={<MaterialIcons name="point-of-sale" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('Sales')}
                 />
                 <Button
                   title="Record Spending"
-                  buttonStyle={styles.tertiaryButton}
+                  buttonStyle={styles.recordSpendingButton}
                   titleStyle={styles.buttonTitle}
-                  icon={<MaterialIcons name="account-balance-wallet" size={22} color="white" style={styles.icon} />}
+                  icon={<MaterialIcons name="money-off" size={22} color="white" style={styles.icon} />}
                   onPress={() => navigation.navigate('Spending')}
                 />
               </>
@@ -588,65 +616,87 @@ const styles = StyleSheet.create({
   buttonGroup: {
     gap: 16,
   },
-  // NEW BUTTON STYLES
+  // Button Styles
   orderButton: {
-    backgroundColor: '#27ae60',
+    backgroundColor: '#27ae60', // Green
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  newTransactionButton: {
+    backgroundColor: '#2980b9', // Blue
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   orderHistoryButton: {
-    backgroundColor: '#16a085',
+    backgroundColor: '#16a085', // Teal
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
-  
-  // EXISTING BUTTON STYLES
   primaryButton: {
-    backgroundColor: '#0984e3',
+    backgroundColor: '#0984e3', // Royal Blue
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
-  secondaryButton: {
-    backgroundColor: '#00b894',
+  newSaleButton: {
+    backgroundColor: '#1abc9c', // Turquoise
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  creditRegisterButton: {
+    backgroundColor: '#e67e22', // Orange
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  recordSpendingButton: {
+    backgroundColor: '#7f8c8d', // Gray
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   analyticsButton: {
-    backgroundColor: '#9b59b6',
+    backgroundColor: '#9b59b6', // Purple
     borderRadius: 10,
     marginTop: 10,
     padding: 15,
   },
   adminButton: {
-    backgroundColor: '#e17055',
+    backgroundColor: '#e17055', // Coral
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   tertiaryButton: {
-    backgroundColor: '#6c5ce7',
+    backgroundColor: '#6c5ce7', // Violet
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   vehicleButton: {
-    backgroundColor: '#2ecc71',
+    backgroundColor: '#2ecc71', // Emerald Green
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   carWashButton: {
-    backgroundColor: '#3498db',
+    backgroundColor: '#3498db', // Bright Blue
+    borderRadius: 12,
+    height: 56,
+    paddingVertical: 8,
+  },
+  carWashSpendingButton: {
+    backgroundColor: '#d35400', // Pumpkin
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,
   },
   commissionButton: {
-    backgroundColor: '#f39c12',
+    backgroundColor: '#f39c12', // Orange
     borderRadius: 12,
     height: 56,
     paddingVertical: 8,

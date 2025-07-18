@@ -27,7 +27,8 @@ import CarWashScreen from '../screens/auth/CarwashScreen';
 import CommissionReportScreen from '../screens/ComissionReportScreen';
 import CarWashSpendingScreen from '../screens/CarWashSpendingScreen'
 import BankDepositScreen from '../screens/BankDepositScreen'; // Added import statement
-
+import CreditRegister from '../screens/CreditRegister';
+import NewTransactionsScreen from '../screens/NewTransactionsScreen'; 
 const Stack = createStackNavigator();
 
 const AuthStack = () => {
@@ -60,7 +61,8 @@ const AppStack = () => {
 <Stack.Screen name="PayOrder" component={PayOrderScreen} />
             <Stack.Screen name="CarWashSpendingScreen" component={CarWashSpendingScreen} options={{ title: 'Record Car Wash Spending' }} />
             <Stack.Screen name="BankDeposit" component={BankDepositScreen} options={{ title: 'Bank Deposit' }} />
-
+            <Stack.Screen name="CreditRegister" component={CreditRegister} options={{ title: 'Credit Register' }} />    
+            <Stack.Screen name="NewTransactions" component={NewTransactionsScreen} options={{ title: 'New Transactions' }} /> 
     </Stack.Navigator>
   );
 };

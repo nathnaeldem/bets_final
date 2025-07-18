@@ -149,15 +149,7 @@ const BankDepositScreen = () => {
             />
           </View>
 
-          <Input
-            placeholder="Account Number (Optional)"
-            value={accountNumber}
-            onChangeText={setAccountNumber}
-            leftIcon={<MaterialIcons name="account-balance" size={24} color="gray" />}
-            inputContainerStyle={styles.inputContainer}
-            inputStyle={styles.inputText}
-            keyboardType="numeric"
-          />
+         
 
           <Input
             placeholder="Amount"
@@ -168,7 +160,15 @@ const BankDepositScreen = () => {
             inputStyle={styles.inputText}
             keyboardType="numeric"
           />
-
+ <Input
+            placeholder="Account Number (Optional)"
+            value={accountNumber}
+            onChangeText={setAccountNumber}
+            leftIcon={<MaterialIcons name="account-balance" size={24} color="gray" />}
+            inputContainerStyle={styles.inputContainer}
+            inputStyle={styles.inputText}
+            keyboardType="numeric"
+          />
           <Input
             placeholder="Deposit Date"
             value={depositDate}

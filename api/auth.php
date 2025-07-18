@@ -80,6 +80,7 @@ function recordLoginAttempt($pdo, $username, $success, $organizationId = null) {
 // --- Main API Handler ---
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $_GET['action'] ?? ($input['action'] ?? '');
+error_log("Raw checkout input: " . print_r($input, true));
 
 // Initialize user and organization variables
 $user = null;
@@ -97,7 +98,7 @@ $protectedRoutes = ['addProduct','add_bank_deposit', 'updateProduct', 'updatePro
     'update_vehicle','get_commission_summary',
   'get_carwash_transactions',
   'get_paid_commissions',
-  'checkout','orderProduct', 'receiveOrder', 'payOrderCredit', 'getProductOrders', 'get_daily_sales', 'get_daily_carwash_transactions']; // Added checkout here
+  'checkout','orderProduct', 'receiveOrder','getNewTransactions', 'payOrderCredit', 'getProductOrders', 'get_daily_sales','get_daily_sales2','checkout2','delete_sale2', 'get_daily_carwash_transactions', 'delete_sale', 'payTransaction']; // Added delete_sale here
 if (in_array($action, $protectedRoutes)) {
     $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     $token = null;
@@ -344,9 +345,10 @@ case 'getAnalyticsAndReports':
         $startDate = $_GET['start_date'] ?? date('Y-m-01');
         $endDate = $_GET['end_date'] ?? date('Y-m-t');
 
+        // Modified query to include import_price
         $salesStmt = $pdo->prepare("
             SELECT t.*, ti.product_id, ti.quantity, ti.unit_price, 
-                   p.name AS product_name, p.category,
+                   p.name AS product_name, p.category, p.import_price,
                    (ti.quantity * ti.unit_price) AS item_total
             FROM transactions t
             JOIN transaction_items ti ON t.id = ti.transaction_id
@@ -370,7 +372,11 @@ case 'getAnalyticsAndReports':
                 $transactions[$transId] = [
                     'items' => [],
                     'total' => 0,
-                    'unpaid' => $sale['unpaid_amount']
+                    'unpaid' => $sale['unpaid_amount'],
+                    'cash_amount' => $sale['cash_amount'] ?? 0,
+                    'bank_amount' => $sale['bank_amount'] ?? 0,
+                    'bank_name' => $sale['bank_name'] ?? null,
+                    'payment_method' => $sale['payment_method'] ?? 'cash'
                 ];
             }
             $transactions[$transId]['items'][] = $sale;
@@ -380,6 +386,10 @@ case 'getAnalyticsAndReports':
         foreach ($transactions as $transId => $trans) {
             $unpaidTotal = $trans['unpaid'];
             $transactionTotal = $trans['total'];
+            $cashAmount = $trans['cash_amount'];
+            $bankAmount = $trans['bank_amount'];
+            $bankName = $trans['bank_name'];
+            $paymentMethod = $trans['payment_method'];
 
             foreach ($trans['items'] as $item) {
                 $itemTotal = $item['item_total'];
@@ -387,8 +397,23 @@ case 'getAnalyticsAndReports':
                 $itemUnpaid = $unpaidTotal * $itemShare;
                 $itemPaid = $itemTotal - $itemUnpaid;
 
-                $item['item_paid'] = $itemPaid;
-                $item['item_unpaid'] = $itemUnpaid;
+                // Calculate profit
+                $importPrice = (float)($item['import_price'] ?? 0);
+                $itemProfit = ($item['unit_price'] - $importPrice) * $item['quantity'];
+                
+                // Add profit to item
+                $item['item_profit'] = $itemProfit;
+                
+                // Add cash/bank amounts for partial payments
+                if ($paymentMethod === 'partial') {
+                    $paidPortion = $transactionTotal - $unpaidTotal;
+                    $cashPortion = $paidPortion > 0 ? ($cashAmount / $paidPortion) * $itemPaid : 0;
+                    $bankPortion = $paidPortion > 0 ? ($bankAmount / $paidPortion) * $itemPaid : 0;
+                    
+                    $item['item_cash'] = $cashPortion;
+                    $item['item_bank'] = $bankPortion;
+                }
+                
                 $processedSales[] = $item;
             }
         }
@@ -432,11 +457,17 @@ case 'getAnalyticsAndReports':
 
         $summary = [
             'total_sales' => 0,
+            'total_profit' => 0, // Added total profit
             'total_expenses' => 0,
             'net_income' => 0,
             'bank_balances' => [],
             'cash_balance' => 0,
-            'category_sales' => []
+            'category_sales' => [],
+            'category_profit' => [], // Added category profit
+            'partial_payments' => [
+                'total_cash' => 0,
+                'total_bank' => 0
+            ]
         ];
 
         $banks = ['CBE', 'Awash', 'Dashen', 'Abyssinia', 'Birhan', 'Telebirr'];
@@ -446,46 +477,71 @@ case 'getAnalyticsAndReports':
         }
 
         foreach ($salesData as $sale) {
-            $paidAmount = $sale['item_paid'];
+            $paidAmount = $sale['item_total'];
+            $paymentMethod = strtolower(trim($sale['payment_method']));
+            $bankName = $sale['bank_name'];
+            $itemProfit = $sale['item_profit'] ?? 0;
             
+            // Add to total sales and profit
             $summary['total_sales'] += $paidAmount;
+            $summary['total_profit'] += $itemProfit;
             
             $category = $sale['category'] ?: 'Uncategorized';
+            
+            // Track category sales
             if (!isset($summary['category_sales'][$category])) {
                 $summary['category_sales'][$category] = 0;
             }
             $summary['category_sales'][$category] += $paidAmount;
             
-            $paymentMethod = strtolower(trim($sale['payment_method']));
-            $bankName = $sale['bank_name'];
-
+            // Track category profit
+            if (!isset($summary['category_profit'][$category])) {
+                $summary['category_profit'][$category] = 0;
+            }
+            $summary['category_profit'][$category] += $itemProfit;
+            
+            // Cash payments
             if ($paymentMethod === 'cash') {
                 $summary['cash_balance'] += $paidAmount;
-            } elseif (($paymentMethod === 'bank' || $paymentMethod === 'credit') && !empty($bankName) && isset($summary['bank_balances'][$bankName])) {
+            }
+            // Bank payments
+            elseif ($paymentMethod === 'bank' && $bankName && isset($summary['bank_balances'][$bankName])) {
                 $summary['bank_balances'][$bankName] += $paidAmount;
+            }
+            // Partial payments
+            elseif ($paymentMethod === 'partial' && isset($sale['item_cash']) && isset($sale['item_bank'])) {
+                $summary['cash_balance'] += $sale['item_cash'];
+                
+                if ($bankName && isset($summary['bank_balances'][$bankName])) {
+                    $summary['bank_balances'][$bankName] += $sale['item_bank'];
+                }
+                
+                $summary['partial_payments']['total_cash'] += $sale['item_cash'];
+                $summary['partial_payments']['total_bank'] += $sale['item_bank'];
             }
         }
 
         foreach ($expensesData as $expense) {
-            $summary['total_expenses'] += $expense['amount'];
+            $amount = $expense['amount'];
+            $summary['total_expenses'] += $amount;
             
             if ($expense['payment_method'] === 'bank' && $expense['bank_name']) {
                 $bank = $expense['bank_name'];
                 if (isset($summary['bank_balances'][$bank])) {
-                    $summary['bank_balances'][$bank] -= $expense['amount'];
+                    $summary['bank_balances'][$bank] -= $amount;
                 }
             }
-            
-            if ($expense['payment_method'] === 'cash') {
-                $summary['cash_balance'] -= $expense['amount'];
+            elseif ($expense['payment_method'] === 'cash') {
+                $summary['cash_balance'] -= $amount;
             }
         }
 
         foreach ($depositsData as $deposit) {
             $bank = $deposit['bank_name'];
+            $amount = $deposit['amount'];
             if (isset($summary['bank_balances'][$bank])) {
-                $summary['bank_balances'][$bank] += $deposit['amount'];
-                $summary['cash_balance'] -= $deposit['amount'];
+                $summary['bank_balances'][$bank] += $amount;
+                $summary['cash_balance'] -= $amount;
             }
         }
 
@@ -495,7 +551,7 @@ case 'getAnalyticsAndReports':
         echo json_encode([
             'success' => true,
             'summary' => $summary,
-            'sales' => $salesData,
+            'sales' => $salesData, // Now includes item_profit
             'expenses' => $expensesData,
             'deposits' => $depositsData,
             'start_date' => $startDate,
@@ -760,6 +816,7 @@ case 'addProduct':
 
             $pdo->beginTransaction();
             try {
+                // Update inventory
                 $stmt = $pdo->prepare("UPDATE product_inventory SET status = :status, quantity = :quantity, status_changed_at = NOW()
                                        WHERE product_id = :product_id");
                 $stmt->execute([
@@ -874,7 +931,7 @@ case 'addProduct':
                 ]);
                 $transactionId = $pdo->lastInsertId();
 
-                // Process each product
+                // 2. Process each product
                 foreach ($input['products'] as $product) {
                     // Validate product data
                     if (!isset($product['product_id'], $product['quantity_sold'], $product['sold_price'])) {
@@ -1331,14 +1388,14 @@ case 'get_commission_summary':
     $t = $pdo->prepare("
       SELECT COALESCE(SUM(tariff),0) AS tariff_sum
         FROM carwash_transactions
-       WHERE organization_id = :org
+       WHERE organization_id = :org_id
          AND transaction_date $between
     ");
     // bind parameters only for daily
     if ($filter === 'daily') {
-      $t->execute([':org'=>$organizationId, ':start'=>$start, ':end'=>$end]);
+      $t->execute([':org_id'=>$organizationId, ':start'=>$start, ':end'=>$end]);
     } else {
-      $t->execute([':org'=>$organizationId]);
+      $t->execute([':org_id'=>$organizationId]);
     }
     $resT = $t->fetch(PDO::FETCH_ASSOC);
 
@@ -1420,7 +1477,7 @@ case 'get_carwash_spendings':
              cs.amount,
              cs.category,
              cs.reason,
-             cs.transaction_date, cs.payment_method, cs.bank_name
+             cs.transaction_date
         FROM car_spendings cs
         JOIN workers w ON cs.user_id = w.id
        WHERE cs.organization_id = :org
@@ -1503,8 +1560,8 @@ case 'pay_unpaid_amount':
                 $stmt->execute([
                   $input['quantity'], $input['status'], $input['product_id']
                 ]);
-                recordActivity($pdo, $loggedInUserId, 'product_update',
-                               "Updated product ID: {$input['product_id']}", $organizationId);
+                
+                recordActivity($pdo, $loggedInUserId, 'product_update', "Updated product ID: {$input['product_id']}", $organizationId);
                 $pdo->commit();
                 echo json_encode(['message'=>'Product updated']);
             } catch (Exception $e) {
@@ -1582,17 +1639,23 @@ case 'pay_unpaid_amount':
 
                 // 1. Create transaction record
                 $stmt = $pdo->prepare("INSERT INTO transactions 
-                    (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+                    (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date, cash_amount, bank_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
+                $cashAmount = isset($input['cash_amount']) && ($input['cash_amount'] !== '' && $input['cash_amount'] !== null) ? (float)$input['cash_amount'] : null;
+                $bankAmount = isset($input['bank_amount']) && ($input['bank_amount'] !== '' && $input['bank_amount'] !== null) ? (float)$input['bank_amount'] : null;
                 $stmt->execute([
                     $loggedInUserId, 
                     $organizationId,
-                    $paymentMethod, 
+                    $paymentMethod,
                     $bankName, 
                     $comment, 
                     $unpaidAmount, 
-                    $customerName
+                    $customerName,
+                    $cashAmount,
+                    $bankAmount
                 ]);
+                error_log("Inserted cash_amount: " . $cashAmount);
+                error_log("Inserted bank_amount: " . $bankAmount);
                 $transactionId = $pdo->lastInsertId();
 
                 // 2. Process each cart item
@@ -1629,7 +1692,11 @@ case 'pay_unpaid_amount':
                 echo json_encode([
                     'success' => true,
                     'message' => 'Checkout completed',
-                    'transaction_id' => $transactionId
+                    'transaction_id' => $transactionId,
+                    'cash_amount' => $cashAmount,
+                    'bank_amount' => $bankAmount,
+                    'input_cash' => $input['cash_amount'] ?? 'not set',
+                    'input_bank' => $input['bank_amount'] ?? 'not set'
                 ]);
             } catch (Exception $e) {
                 $pdo->rollBack();
@@ -1637,6 +1704,95 @@ case 'pay_unpaid_amount':
                 echo json_encode(['success' => false, 'message' => $e->getMessage()]);
             }
             break;
+
+
+
+
+
+
+
+ case 'checkout2':
+            try {
+                // Validate cart data
+                if (empty($input['cart'])) {
+                    throw new Exception("Cart data is required");
+                }
+                
+                $cart = json_decode($input['cart'], true);
+                $paymentMethod = $input['payment_method'] ?? 'cash';
+                $bankName = $input['bank_name'] ?? '';
+                $customerName = $input['customer_name'] ?? '';
+                $unpaidAmount = floatval($input['unpaid_amount'] ?? 0);
+                $comment = $input['comment'] ?? '';
+
+                // Begin transaction
+                $pdo->beginTransaction();
+
+                // 1. Create transaction record
+                $stmt = $pdo->prepare("INSERT INTO new_transactions 
+                    (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date, cash_amount, bank_amount)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)");
+                $cashAmount = isset($input['cash_amount']) && ($input['cash_amount'] !== '' && $input['cash_amount'] !== null) ? (float)$input['cash_amount'] : null;
+                $bankAmount = isset($input['bank_amount']) && ($input['bank_amount'] !== '' && $input['bank_amount'] !== null) ? (float)$input['bank_amount'] : null;
+                $stmt->execute([
+                    $loggedInUserId, 
+                    $organizationId,
+                    $paymentMethod,
+                    $bankName, 
+                    $comment, 
+                    $unpaidAmount, 
+                    $customerName,
+                    $cashAmount,
+                    $bankAmount
+                ]);
+                error_log("Inserted cash_amount: " . $cashAmount);
+                error_log("Inserted bank_amount: " . $bankAmount);
+                $transactionId = $pdo->lastInsertId();
+
+                // 2. Process each cart item
+                foreach ($cart as $item) {
+                    if (empty($item['product_id']) || empty($item['quantity']) || empty($item['price'])) {
+                        throw new Exception("Invalid cart item format");
+                    }
+
+                    // Insert transaction item
+                    $stmt = $pdo->prepare("INSERT INTO new_transaction_items 
+                        (transaction_id, product_id, quantity, unit_price)
+                        VALUES (?, ?, ?, ?)");
+                    $stmt->execute([
+                        $transactionId,
+                        $item['product_id'],
+                        $item['quantity'],
+                        $item['price']
+                    ]);
+
+                    // Update inventory
+                   
+                }
+
+                // Commit transaction
+                $pdo->commit();
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Checkout completed',
+                    'transaction_id' => $transactionId,
+                    'cash_amount' => $cashAmount,
+                    'bank_amount' => $bankAmount,
+                    'input_cash' => $input['cash_amount'] ?? 'not set',
+                    'input_bank' => $input['bank_amount'] ?? 'not set'
+                ]);
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
+            break;
+
+
+
+
+
 
 
 
@@ -1870,7 +2026,6 @@ case 'payOrderCredit':
     }
     break;
 
-
 case 'getProductOrders':
     $status = $_GET['status'] ?? 'all';
     $sql = "SELECT * FROM product_orders WHERE organization_id = :org_id";
@@ -1886,7 +2041,140 @@ case 'getProductOrders':
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     echo json_encode(['success' => true, 'orders' => $orders]);
-    break;
+
+case 'delete_sale':
+            if (empty($input['sale_id'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Sale ID is required.']);
+                break;
+            }
+
+            $saleId = $input['sale_id'];
+
+            try {
+                $pdo->beginTransaction();
+
+                // Get sale item details
+                $stmt = $pdo->prepare("SELECT ti.product_id, ti.quantity, ti.transaction_id 
+                                       FROM transaction_items ti 
+                                       WHERE ti.id = :saleId");
+                $stmt->bindParam(':saleId', $saleId, PDO::PARAM_INT);
+                $stmt->execute();
+                $saleItem = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$saleItem) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Sale not found.']);
+                    $pdo->rollBack();
+                    break;
+                }
+
+                $productId = $saleItem['product_id'];
+                $quantity = $saleItem['quantity'];
+                $transactionId = $saleItem['transaction_id'];
+
+                // Restore product quantity
+                $updateStmt = $pdo->prepare("UPDATE product_inventory SET quantity = quantity + :quantity WHERE product_id = :productId");
+                $updateStmt->bindParam(':quantity', $quantity, PDO::PARAM_INT);
+                $updateStmt->bindParam(':productId', $productId, PDO::PARAM_INT);
+                $updateStmt->execute();
+
+                // Delete the transaction item
+                $stmt = $pdo->prepare("DELETE FROM transaction_items WHERE id = :saleId");
+                $stmt->bindParam(':saleId', $saleId, PDO::PARAM_INT);
+                $stmt->execute();
+
+                // Check if transaction has any remaining items
+                $stmt = $pdo->prepare("SELECT COUNT(*) AS item_count FROM transaction_items WHERE transaction_id = :transactionId");
+                $stmt->bindParam(':transactionId', $transactionId, PDO::PARAM_INT);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result['item_count'] == 0) {
+                    // Delete the transaction if no items left
+                    $stmt = $pdo->prepare("DELETE FROM transactions WHERE id = :transactionId");
+                    $stmt->bindParam(':transactionId', $transactionId, PDO::PARAM_INT);
+                    $stmt->execute();
+                }
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Sale deleted successfully and product quantity restored']);
+
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                error_log("Delete sale error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to delete sale: ' . $e->getMessage()]);
+            }
+            break;
+            
+
+
+
+
+    case 'delete_sale2':
+            if (empty($input['sale_id'])) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Sale ID is required.']);
+                break;
+            }
+
+            $saleId = $input['sale_id'];
+
+            try {
+                $pdo->beginTransaction();
+
+                // Get sale item details
+                $stmt = $pdo->prepare("SELECT ti.product_id, ti.quantity, ti.transaction_id 
+                                       FROM new_transaction_items ti 
+                                       WHERE ti.id = :saleId");
+                $stmt->bindParam(':saleId', $saleId, PDO::PARAM_INT);
+                $stmt->execute();
+                $saleItem = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$saleItem) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Sale not found.']);
+                    $pdo->rollBack();
+                    break;
+                }
+
+                $productId = $saleItem['product_id'];
+                $quantity = $saleItem['quantity'];
+                $transactionId = $saleItem['transaction_id'];
+
+                // Restore product quantity
+                
+                $updateStmt->execute();
+
+                // Delete the transaction item
+                $stmt = $pdo->prepare("DELETE FROM new_transaction_items WHERE id = :saleId");
+                $stmt->bindParam(':saleId', $saleId, PDO::PARAM_INT);
+                $stmt->execute();
+
+                // Check if transaction has any remaining items
+                $stmt = $pdo->prepare("SELECT COUNT(*) AS item_count FROM new_transaction_items WHERE transaction_id = :transactionId");
+                $stmt->bindParam(':transactionId', $transactionId, PDO::PARAM_INT);
+                $stmt->execute();
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($result['item_count'] == 0) {
+                    // Delete the transaction if no items left
+                    $stmt = $pdo->prepare("DELETE FROM new_transactions WHERE id = :transactionId");
+                    $stmt->bindParam(':transactionId', $transactionId, PDO::PARAM_INT);
+                    $stmt->execute();
+                }
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Sale deleted successfully and product quantity restored']);
+
+            } catch (PDOException $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                error_log("Delete sale error: " . $e->getMessage());
+                echo json_encode(['success' => false, 'message' => 'Failed to delete sale: ' . $e->getMessage()]);
+            }
+            break;
 
 
 
@@ -1983,8 +2271,8 @@ case 'getProductOrders':
                     ':vehicle_id' => $vehicle_id,
                     ':tariff' => $tariff,
                     ':commission_amount' => $total_commission,
-                    ':payment_method' => $payment_method,
-                    ':bank_name' => $bank_name
+                    ':payment_method' => $paymentMethod,
+                    ':bank_name' => $bankName
                 ]);
                 $transactionId = $pdo->lastInsertId();
 
@@ -2077,7 +2365,7 @@ case 'getProductOrders':
             }
             break;
 
-        case 'get_daily_sales':
+case 'get_daily_sales':
             if (!isset($decoded->organization_id)) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Organization ID is missing from token.']);
@@ -2100,11 +2388,11 @@ case 'getProductOrders':
                         FROM transactions t
                         JOIN transaction_items ti ON t.id = ti.transaction_id
                         JOIN products p ON ti.product_id = p.id
-                        WHERE t.organization_id = :organization_id AND DATE(t.transaction_date) = CURDATE()
+                        WHERE t.organization_id = :org_id AND DATE(t.transaction_date) = CURDATE()
                         ORDER BY t.transaction_date DESC";
 
                 $stmt = $pdo->prepare($sql);
-                $stmt->bindParam(':organization_id', $organization_id, PDO::PARAM_INT);
+                $stmt->bindParam(':org_id', $organization_id, PDO::PARAM_INT);
                 $stmt->execute();
                 $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -2117,6 +2405,165 @@ case 'getProductOrders':
                 error_log("API Error in get_daily_sales: " . $e->getMessage());
                 // Send a generic error message to the client
                 echo json_encode(['success' => false, 'message' => 'Server Error: Could not retrieve daily sales.']);
+            }
+            break;
+
+
+
+
+
+case 'get_daily_sales2':
+            if (!isset($decoded->organization_id)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Organization ID is missing from token.']);
+                exit;
+            }
+
+            $organization_id = $decoded->organization_id;
+
+
+            try {
+                // Corrected SQL query based on schema review
+                $sql = "SELECT 
+                            ti.id AS transaction_item_id,
+                            p.name AS product_name, 
+                            ti.quantity, 
+                            ti.unit_price AS price, 
+                            (ti.quantity * ti.unit_price) AS total_amount, 
+                            t.payment_method, 
+                            t.bank_name,
+                            t.transaction_date
+                        FROM new_transactions t
+                        JOIN new_transaction_items ti ON t.id = ti.transaction_id
+                        JOIN products p ON ti.product_id = p.id
+                        WHERE t.organization_id = :org_id AND DATE(t.transaction_date) = CURDATE()
+                        ORDER BY t.transaction_date DESC";
+
+                $stmt = $pdo->prepare($sql);
+                $stmt->bindParam(':org_id', $organization_id, PDO::PARAM_INT);
+                $stmt->execute();
+                $sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                http_response_code(200);
+                echo json_encode(['success' => true, 'sales' => $sales]);
+
+            } catch (PDOException $e) {
+                http_response_code(500);
+                // Log the detailed error on the server for debugging
+                error_log("API Error in get_daily_sales: " . $e->getMessage());
+                // Send a generic error message to the client
+                echo json_encode(['success' => false, 'message' => 'Server Error: Could not retrieve daily sales.']);
+            }
+            break;
+
+
+
+
+            case 'getNewTransactions':
+                // Get the user ID and organization ID from the token
+                $userId = $_SESSION['user_id'];
+                $organizationId = $decoded->organization_id;
+
+            
+                try {
+                    // Query to fetch transactions
+                    $stmt = $pdo->prepare("SELECT * FROM new_transactions WHERE organization_id = :organization_id ORDER BY transaction_date DESC");
+                    $stmt->execute([':organization_id' => $organizationId]);
+                    $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                // For each transaction, fetch its items
+                    foreach ($transactions as &$transaction) {
+                        $itemStmt = $pdo->prepare("SELECT * FROM new_transaction_items WHERE transaction_id = :transaction_id");
+                        $itemStmt->execute([':transaction_id' => $transaction['id']]);
+                        $items = $itemStmt->fetchAll(PDO::FETCH_ASSOC);
+                        $transaction['items'] = $items;
+                    }
+
+                    echo json_encode([
+                        'success' => true,
+                        'transactions' => $transactions,
+                        'debug' => [
+                            'organizationId' => $organizationId,
+                            'userId' => $userId,
+                            'transactionCount' => count($transactions)
+                        ]
+                    ]);
+                } catch (PDOException $e) {
+                    http_response_code(500);
+                    echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+                }
+                break;
+                
+                case 'payTransaction':
+            $transactionId = $input['transaction_id'] ?? null;
+            if (!$transactionId) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Transaction ID is required.']);
+                exit;
+            }
+
+            $pdo->beginTransaction();
+            try {
+                // 1. Fetch the new transaction
+                $stmt = $pdo->prepare("SELECT * FROM new_transactions WHERE id = :id AND organization_id = :org_id");
+                $stmt->execute([':id' => $transactionId, ':org_id' => $organizationId]);
+                $transaction = $stmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$transaction) {
+                    throw new Exception("Transaction not found or access denied.");
+                }
+
+                // 2. Insert into the main transactions table
+                $insertTransactionStmt = $pdo->prepare("
+                    INSERT INTO transactions (user_id, organization_id, payment_method, bank_name, comment, unpaid_amount, customer_name, transaction_date, cash_amount, bank_amount)
+                    VALUES (:user_id, :organization_id, :payment_method, :bank_name, :comment, :unpaid_amount, :customer_name, :transaction_date, :cash_amount, :bank_amount)
+                ");
+                $insertTransactionStmt->execute([
+                    ':user_id' => $transaction['user_id'],
+                    ':organization_id' => $transaction['organization_id'],
+                    ':payment_method' => $transaction['payment_method'],
+                    ':bank_name' => $transaction['bank_name'],
+                    ':comment' => $transaction['comment'],
+                    ':unpaid_amount' => $transaction['unpaid_amount'],
+                    ':customer_name' => $transaction['customer_name'],
+                    ':transaction_date' => $transaction['transaction_date'],
+                    ':cash_amount' => $transaction['cash_amount'],
+                    ':bank_amount' => $transaction['bank_amount']
+                ]);
+                $newTransactionId = $pdo->lastInsertId();
+
+                // 3. Fetch and insert transaction items
+                $stmt = $pdo->prepare("SELECT * FROM new_transaction_items WHERE transaction_id = :transaction_id");
+                $stmt->execute([':transaction_id' => $transaction['id']]);
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $insertItemStmt = $pdo->prepare("
+                    INSERT INTO transaction_items (transaction_id, product_id, quantity, unit_price)
+                    VALUES (:transaction_id, :product_id, :quantity, :unit_price)
+                ");
+                foreach ($items as $item) {
+                    $insertItemStmt->execute([
+                        ':transaction_id' => $newTransactionId,
+                        ':product_id' => $item['product_id'],
+                        ':quantity' => $item['quantity'],
+                        ':unit_price' => $item['unit_price']
+                    ]);
+                }
+
+                // 4. Delete from new_transaction_items and new_transactions
+                $stmt = $pdo->prepare("DELETE FROM new_transaction_items WHERE transaction_id = :transaction_id");
+                $stmt->execute([':transaction_id' => $transactionId]);
+
+                $stmt = $pdo->prepare("DELETE FROM new_transactions WHERE id = :id");
+                $stmt->execute([':id' => $transactionId]);
+
+                $pdo->commit();
+                echo json_encode(['success' => true, 'message' => 'Transaction paid and moved successfully.']);
+
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Failed to pay transaction: ' . $e->getMessage()]);
             }
             break;
 
